@@ -1,0 +1,2 @@
+# IntelligentRecruitmentSystem
+IntelligentRecruitmentSystem——for AI Application Development Course
