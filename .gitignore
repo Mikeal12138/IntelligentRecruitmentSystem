@@ -1,0 +1,47 @@
+# 数据文件
+data/raw/*.csv
+data/raw/*.xlsx
+data/processed/*.csv
+data/processed/*.pkl
+data/text_features/*.pkl
+data/text_features/*.npy
+
+# 模型文件
+models/*.pkl
+models/*.pt
+models/*.h5
+models/*.onnx
+
+# 环境变量
+.env
+config/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 临时文件
+*.tmp
+*.temp
