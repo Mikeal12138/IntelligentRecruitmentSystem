@@ -5,6 +5,7 @@
 2. 多维度智能筛选
 3. 基于余弦相似度的岗位匹配
 4. 岗位收藏与对比
+5. 支持 MySQL 数据库数据源
 """
 import os
 import re
@@ -13,18 +14,45 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import issparse
 from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 
 class JobSearchService:
-    def __init__(self, data_path, model_dir='models'):
+    def __init__(self, data_path=None, model_dir='models', use_database=True):
         self.data_path = data_path
         self.model_dir = model_dir
+        self.use_database = use_database
         self.df = None
         self.tfidf_matrix = None
         self.vectorizer = None
         self.stopwords = set()
+        self.db_connection = None
+        
         self._load_models()
         self._load_data()
+    
+    def _get_db_connection(self):
+        """获取数据库连接"""
+        if self.db_connection is None or not self.db_connection.is_connected():
+            try:
+                import mysql.connector
+                db_config = {
+                    "host": os.getenv("DB_HOST", "localhost"),
+                    "port": int(os.getenv("DB_PORT", 3306)),
+                    "user": os.getenv("DB_USER", "root"),
+                    "password": os.getenv("DB_PASSWORD", ""),
+                    "database": os.getenv("DB_NAME", "recruitment_db"),
+                    "charset": "utf8mb4"
+                }
+                self.db_connection = mysql.connector.connect(**db_config)
+                print("[Search] 数据库连接成功")
+            except Exception as e:
+                print(f"[Search] 数据库连接失败：{e}")
+                self.db_connection = None
+        return self.db_connection
     
     def _load_models(self):
         tfidf_path = os.path.join(self.model_dir, 'tfidf_vectorizer.pkl')
@@ -38,9 +66,24 @@ class JobSearchService:
             print(f"[Search] 警告: TF-IDF 模型不存在: {tfidf_path}")
     
     def _load_data(self):
-        if os.path.exists(self.data_path):
+        """从数据库或 CSV 加载数据"""
+        # 优先从数据库加载
+        if self.use_database:
+            conn = self._get_db_connection()
+            if conn:
+                try:
+                    query = "SELECT * FROM recruitment_data"
+                    self.df = pd.read_sql(query, conn)
+                    print(f"[Search] 从数据库加载 {len(self.df)} 条岗位数据")
+                    self._build_tfidf_matrix()
+                    return
+                except Exception as e:
+                    print(f"[Search] 数据库查询失败：{e}，尝试从 CSV 加载")
+        
+        # 如果数据库加载失败，从 CSV 加载
+        if self.data_path and os.path.exists(self.data_path):
             self.df = pd.read_csv(self.data_path, encoding='utf-8')
-            print(f"[Search] 已加载 {len(self.df)} 条岗位数据")
+            print(f"[Search] 从 CSV 加载 {len(self.df)} 条岗位数据")
             self._build_tfidf_matrix()
         else:
             print(f"[Search] 警告: 数据文件不存在: {self.data_path}")
@@ -168,13 +211,13 @@ class JobSearchService:
         
         return conditions
     
-    def search_by_query(self, query_text, top_n=50):
+    def search_by_query(self, query_text, top_n=500):
         """
         执行智能搜索：
         1. 解析查询条件
         2. 计算余弦相似度
         3. 应用筛选条件
-        4. 返回排序后的结果
+        4. 返回排序后的结果（尽可能多地返回相关岗位）
         """
         if self.df.empty or self.tfidf_matrix is None:
             return pd.DataFrame(), {}

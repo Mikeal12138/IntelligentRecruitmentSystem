@@ -29,9 +29,10 @@ st.set_page_config(
 # 初始化搜索服务
 @st.cache_resource
 def init_search_service():
+    # 优先使用数据库，data_path 作为备选
     data_path = os.path.join(ROOT, 'data', 'processed', 'cleaned_recruitment_data(1).csv')
     model_dir = os.path.join(ROOT, 'models')
-    return JobSearchService(data_path=data_path, model_dir=model_dir)
+    return JobSearchService(data_path=data_path, model_dir=model_dir, use_database=True)
 
 # 初始化 Session State
 if 'search_service' not in st.session_state:
@@ -95,7 +96,7 @@ with tab1:
     with col1:
         if st.button("🔍 搜索", type="primary", use_container_width=True):
             if query:
-                results, conditions = search_service.search_by_query(query, top_n=50)
+                results, conditions = search_service.search_by_query(query)
                 st.session_state.search_results = results
                 st.session_state.search_conditions = conditions
                 st.success(f"找到 {len(results)} 个匹配的岗位")
