@@ -5,6 +5,7 @@
 2. 自动提取个人信息、教育背景、工作经历、技能等
 3. 生成简历评分报告
 4. 提供优化建议
+5. 基于简历信息进行岗位推荐
 """
 import os
 import sys
@@ -445,3 +446,143 @@ class ResumeParser:
             'score_report': score_report,
             'improvement_report': improvement_report,
         }
+    
+    def recommend_jobs(self, parsed_data: Dict, top_n: int = 10) -> List[Dict]:
+        """基于解析的简历信息推荐合适的岗位"""
+        if "error" in parsed_data:
+            return []
+        
+        # 加载招聘数据
+        data_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            'data', 'processed', 'cleaned_recruitment_data(1).csv'
+        )
+        
+        if not os.path.exists(data_path):
+            print("[ResumeParser] 警告：招聘数据文件不存在")
+            return []
+        
+        try:
+            df = pd.read_csv(data_path, encoding='utf-8')
+        except Exception as e:
+            print(f"[ResumeParser] 加载招聘数据失败：{str(e)}")
+            return []
+        
+        # 提取简历关键信息
+        candidate_skills = set()
+        if parsed_data.get('skills'):
+            for skill in parsed_data['skills']:
+                if isinstance(skill, str):
+                    candidate_skills.add(skill.lower())
+        
+        candidate_degree = parsed_data.get('highest_degree', '')
+        candidate_experience = parsed_data.get('years_of_experience', 0)
+        
+        # 尝试将工作经验转换为数字
+        if isinstance(candidate_experience, str):
+            try:
+                candidate_experience = int(''.join(filter(str.isdigit, candidate_experience)))
+            except:
+                candidate_experience = 0
+        
+        # 计算每个岗位的匹配度
+        recommendations = []
+        
+        for idx, job in df.iterrows():
+            score = 0
+            match_reasons = []
+            
+            # 1. 技能匹配度（50分）
+            job_desc = str(job.get('职位描述', '')).lower()
+            matched_skills = []
+            for skill in self.job_skills:
+                if skill.lower() in candidate_skills and skill.lower() in job_desc:
+                    score += 5
+                    matched_skills.append(skill)
+                    if len(matched_skills) >= 10:
+                        break
+            
+            if matched_skills:
+                match_reasons.append(f"技能匹配：{', '.join(matched_skills[:5])}")
+            
+            # 2. 学历匹配度（20分）
+            job_edu = str(job.get('学历要求', ''))
+            degree_score = {'博士': 5, '硕士': 4, '本科': 3, '大专': 2, '其他': 1}
+            candidate_degree_level = degree_score.get(candidate_degree, 0)
+            job_degree_level = degree_score.get(job_edu, 0)
+            
+            if candidate_degree_level >= job_degree_level:
+                score += 20
+                match_reasons.append(f"学历符合要求（{candidate_degree}）")
+            elif candidate_degree_level >= job_degree_level - 1:
+                score += 10
+                match_reasons.append(f"学历基本符合（{candidate_degree}）")
+            
+            # 3. 经验匹配度（20分）
+            job_exp = str(job.get('要求经验', ''))
+            exp_score = self._parse_experience_requirement(job_exp)
+            
+            if candidate_experience >= exp_score:
+                score += 20
+                match_reasons.append(f"工作经验符合（{candidate_experience}年）")
+            elif candidate_experience >= exp_score - 1:
+                score += 10
+                match_reasons.append(f"工作经验基本符合（{candidate_experience}年）")
+            
+            # 4. 薪资合理性（10分）- 根据经验匹配薪资
+            job_avg_salary = job.get('平均月薪', 0)
+            if pd.notna(job_avg_salary):
+                expected_salary = 5000 + candidate_experience * 2000
+                if job_avg_salary >= expected_salary * 0.8:
+                    score += 10
+            
+            # 只推荐匹配度较高的岗位
+            if score >= 30:
+                recommendations.append({
+                    'company': job.get('企业名称', '未知'),
+                    'position': job.get('招聘岗位', '未知'),
+                    'city': job.get('工作城市', '未知'),
+                    'min_salary': job.get('最低月薪', 0),
+                    'max_salary': job.get('最高月薪', 0),
+                    'avg_salary': job.get('平均月薪', 0),
+                    'education': job.get('学历要求', '未知'),
+                    'experience': job.get('要求经验', '未知'),
+                    'industry': job.get('行业类型', '未知'),
+                    'company_size': job.get('企业规模', '未知'),
+                    'job_desc': job.get('职位描述', ''),
+                    'match_score': min(score, 100),
+                    'match_reasons': match_reasons,
+                    'publish_date': job.get('招聘发布日期', '未知'),
+                })
+        
+        # 按匹配度排序
+        recommendations.sort(key=lambda x: x['match_score'], reverse=True)
+        
+        return recommendations[:top_n]
+    
+    def _parse_experience_requirement(self, exp_str: str) -> int:
+        """解析经验要求字符串，返回最低要求年限"""
+        if not exp_str or exp_str == '经验不限':
+            return 0
+        
+        # 提取数字
+        numbers = re.findall(r'\d+', exp_str)
+        if numbers:
+            return int(numbers[0])
+        
+        # 常见经验要求映射
+        exp_mapping = {
+            '应届生': 0,
+            '在校': 0,
+            '经验不限': 0,
+            '1-3年': 1,
+            '3-5年': 3,
+            '5-10年': 5,
+            '10年以上': 10,
+        }
+        
+        for key, value in exp_mapping.items():
+            if key in exp_str:
+                return value
+        
+        return 0

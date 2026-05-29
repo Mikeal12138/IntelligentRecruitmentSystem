@@ -184,38 +184,99 @@ elif selected_function == "🎤 面试模拟":
                 st.rerun()
 
 elif selected_function == "💼 岗位推荐":
-    st.subheader("💼 岗位推荐")
-    st.write("根据你的条件推荐合适的岗位")
+    st.subheader("💼 智能岗位推荐")
+    st.write("告诉我你的求职需求，我会为你推荐合适的岗位")
     
+    # 自然语言输入
+    user_query = st.text_area(
+        "描述你的求职需求",
+        height=120,
+        placeholder="例如：我想找北京地区的 Java 开发工作，期望薪资 15k-20k，有 3 年经验，本科学历..."
+    )
+    
+    st.divider()
+    st.write("**或者使用快速筛选：**")
     col1, col2, col3 = st.columns(3)
     with col1:
-        position = st.text_input("岗位关键词", placeholder="如：Java")
+        position = st.text_input("岗位关键词", placeholder="如：Java", key="quick_position")
     with col2:
-        city = st.text_input("工作城市", placeholder="如：北京")
+        city = st.text_input("工作城市", placeholder="如：北京", key="quick_city")
     with col3:
-        experience = st.text_input("工作经验", placeholder="如：3 年")
+        experience = st.text_input("工作经验", placeholder="如：3 年", key="quick_experience")
     
-    if st.button("🔍 搜索岗位", type="primary"):
-        filters = {}
-        if position:
-            filters['position'] = position
-        if city:
-            filters['city'] = city
-        if experience:
-            filters['experience'] = experience
-        
-        with st.spinner("正在搜索岗位..."):
-            recommendations = assistant.recommend_jobs(filters)
-            if recommendations:
-                st.success(f"找到 {len(recommendations)} 个匹配岗位")
-                for i, rec in enumerate(recommendations):
-                    with st.expander(f"💼 {rec['position']} - {rec['company']}"):
-                        st.write(f"**城市**：{rec['city']}")
-                        st.write(f"**薪资**：{rec['salary_range']}")
-                        st.write(f"**经验要求**：{rec['experience']}")
-                        st.write(f"**学历要求**：{rec['education']}")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔍 智能推荐", type="primary", use_container_width=True):
+            if user_query:
+                with st.spinner("正在为您智能匹配岗位..."):
+                    recommendations = assistant.recommend_jobs(user_query=user_query, top_n=10)
+                    st.session_state.job_recommendations = recommendations
             else:
-                st.warning("未找到匹配岗位，请调整筛选条件")
+                st.warning("请先描述你的求职需求")
+    
+    with col2:
+        if st.button("🔎 快速筛选", use_container_width=True):
+            filters = {}
+            if position:
+                filters['position'] = position
+            if city:
+                filters['city'] = city
+            if experience:
+                filters['experience'] = experience
+            
+            if filters:
+                with st.spinner("正在搜索岗位..."):
+                    recommendations = assistant.recommend_jobs(filters=filters, top_n=10)
+                    st.session_state.job_recommendations = recommendations
+            else:
+                st.warning("请至少填写一个筛选条件")
+    
+    # 显示推荐结果
+    if st.session_state.get('job_recommendations'):
+        recommendations = st.session_state.job_recommendations
+        
+        if recommendations:
+            st.divider()
+            st.success(f"✅ 找到 {len(recommendations)} 个匹配岗位")
+            
+            for i, rec in enumerate(recommendations):
+                match_score = rec.get('match_score', 0)
+                with st.expander(
+                    f"💼 {rec['position']} - {rec['company']} (匹配度：{match_score}%)",
+                    expanded=(i == 0)
+                ):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**📍 城市：** {rec['city']}")
+                        st.write(f"**🎓 学历：** {rec['education']}")
+                    with col2:
+                        st.write(f"**💼 经验：** {rec['experience']}")
+                        st.write(f"**🏭 行业：** {rec.get('industry', '未知')}")
+                    with col3:
+                        st.write(f"**💰 薪资：** {rec['salary_range']}")
+                        st.write(f"**📊 规模：** {rec.get('company_size', '未知')}")
+                    
+                    # 显示匹配原因
+                    if rec.get('match_reasons'):
+                        st.divider()
+                        st.write("**✅ 匹配亮点：**")
+                        for reason in rec['match_reasons']:
+                            st.success(f"✓ {reason}")
+                    
+                    # 显示职位描述
+                    if rec.get('job_desc'):
+                        st.divider()
+                        st.write("**📋 职位描述：**")
+                        job_desc = rec['job_desc']
+                        if len(job_desc) > 400:
+                            job_desc = job_desc[:400] + "..."
+                        st.write(job_desc)
+                    
+                    # 发布日期
+                    if rec.get('publish_date'):
+                        st.caption(f"发布日期：{rec['publish_date']}")
+        else:
+            st.warning("未找到匹配岗位，请调整你的需求描述或筛选条件")
 
 elif selected_function == "📊 职业规划":
     st.subheader("📊 职业规划")

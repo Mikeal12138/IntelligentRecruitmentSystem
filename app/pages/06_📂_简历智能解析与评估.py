@@ -66,7 +66,7 @@ st.title("📄 个人简历智能解析与评估")
 st.write("上传简历，自动提取信息并生成评估报告")
 
 # 标签页
-tab1, tab2, tab3 = st.tabs(["📤 上传简历", " 评估报告", "💡 改进建议"])
+tab1, tab2, tab3, tab4 = st.tabs(["📤 上传简历", "📊 评估报告", "💡 改进建议", "🎯 岗位推荐"])
 
 with tab1:
     st.subheader(" 上传您的简历")
@@ -299,3 +299,76 @@ with tab3:
                 st.write("### 📝 基础建议")
                 for suggestion in suggestions:
                     st.info(f"• {suggestion}")
+
+with tab4:
+    st.subheader("🎯 智能岗位推荐")
+    
+    if not st.session_state.parse_result:
+        st.info("请先在「上传简历」标签页上传并解析简历")
+    else:
+        result = st.session_state.parse_result
+        
+        if 'error' in result:
+            st.error(f"❌ 解析失败：{result['error']}")
+        elif 'parsed_data' not in result:
+            st.error("❌ 解析结果格式异常")
+        else:
+            parsed = result['parsed_data']
+            
+            # 推荐按钮
+            if st.button("🔍 开始推荐岗位", type="primary", use_container_width=True):
+                with st.spinner("正在为您匹配合适岗位，请稍候..."):
+                    recommendations = parser.recommend_jobs(parsed, top_n=10)
+                    st.session_state.recommendations = recommendations
+            
+            # 显示推荐结果
+            if st.session_state.get('recommendations'):
+                recommendations = st.session_state.recommendations
+                
+                if not recommendations:
+                    st.info("暂未找到完全匹配的岗位，建议完善简历技能信息")
+                else:
+                    st.success(f"✅ 找到 {len(recommendations)} 个匹配岗位")
+                    st.divider()
+                    
+                    # 显示推荐数量选择
+                    show_count = st.slider("显示数量", 5, len(recommendations), 10)
+                    
+                    for i, job in enumerate(recommendations[:show_count], 1):
+                        with st.expander(f"🏢 {job['position']} - {job['company']} (匹配度: {job['match_score']}%)", expanded=(i == 1)):
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.write(f"**📍 工作城市：** {job['city']}")
+                                st.write(f"**🎓 学历要求：** {job['education']}")
+                            with col2:
+                                st.write(f"**💼 经验要求：** {job['experience']}")
+                                st.write(f"**🏭 行业类型：** {job['industry']}")
+                            with col3:
+                                salary_range = f"¥{int(job['min_salary'])/1000:.0f}K-¥{int(job['max_salary'])/1000:.0f}K"
+                                st.write(f"**💰 薪资范围：** {salary_range}")
+                                st.write(f"**📊 企业规模：** {job['company_size']}")
+                            
+                            st.divider()
+                            
+                            # 匹配原因
+                            if job.get('match_reasons'):
+                                st.write("**✅ 匹配亮点：**")
+                                for reason in job['match_reasons']:
+                                    st.success(f"✓ {reason}")
+                            
+                            st.divider()
+                            
+                            # 职位详情
+                            st.write("**📋 职位描述：**")
+                            job_desc = job.get('job_desc', '')
+                            if len(job_desc) > 500:
+                                job_desc = job_desc[:500] + "..."
+                            st.write(job_desc)
+                            
+                            # 发布日期
+                            if job.get('publish_date') != '未知':
+                                st.caption(f"发布日期：{job['publish_date']}")
+                            
+                            st.divider()
+            else:
+                st.info("点击上方「开始推荐岗位」按钮获取推荐")

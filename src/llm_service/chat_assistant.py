@@ -342,11 +342,16 @@ class ChatAssistant:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
             return f"评估服务暂时不可用：{safe_error}"
     
-    def recommend_jobs(self, filters: Dict = None) -> List[Dict]:
-        """岗位推荐"""
+    def recommend_jobs(self, filters: Dict = None, user_query: str = None, top_n: int = 10) -> List[Dict]:
+        """岗位推荐 - 支持基于用户问题的智能推荐"""
         if self.job_data is None or self.job_data.empty:
             return []
         
+        # 如果有用户查询，使用智能推荐
+        if user_query:
+            return self._smart_recommend(user_query, top_n)
+        
+        # 否则使用传统筛选
         filtered = self.job_data.copy()
         
         # 应用筛选条件
@@ -366,8 +371,8 @@ class ChatAssistant:
         if '平均月薪' in filtered.columns:
             filtered = filtered.sort_values('平均月薪', ascending=False)
         
-        # 返回前 10 条
-        result = filtered.head(10)
+        # 返回前 top_n 条
+        result = filtered.head(top_n)
         
         recommendations = []
         for _, row in result.iterrows():
@@ -378,10 +383,226 @@ class ChatAssistant:
                 'salary_range': f"{row.get('最低月薪', 0):.0f}-{row.get('最高月薪', 0):.0f} 元",
                 'experience': row.get('要求经验', ''),
                 'education': row.get('学历要求', ''),
+                'match_score': 0,
+                'match_reasons': [],
             }
             recommendations.append(rec)
         
         return recommendations
+    
+    def _smart_recommend(self, user_query: str, top_n: int = 10) -> List[Dict]:
+        """基于用户问题的智能推荐"""
+        # 1. 解析用户意图
+        intent = self._parse_user_intent(user_query)
+        
+        # 2. 根据意图筛选和评分
+        filtered = self.job_data.copy()
+        recommendations = []
+        
+        for idx, job in filtered.iterrows():
+            score = 0
+            match_reasons = []
+            
+            # 岗位匹配
+            if intent.get('position'):
+                job_position = str(job.get('招聘岗位', '')).lower()
+                if intent['position'].lower() in job_position:
+                    score += 30
+                    match_reasons.append(f"岗位匹配：{job.get('招聘岗位')}")
+            
+            # 城市匹配
+            if intent.get('city'):
+                if job.get('工作城市') == intent['city']:
+                    score += 20
+                    match_reasons.append(f"城市匹配：{job.get('工作城市')}")
+            
+            # 薪资匹配
+            if intent.get('min_salary'):
+                if job.get('最高月薪', 0) >= intent['min_salary']:
+                    score += 15
+                    match_reasons.append(f"薪资符合预期")
+            
+            if intent.get('max_salary'):
+                if job.get('最低月薪', 0) <= intent['max_salary']:
+                    score += 10
+            
+            # 经验匹配
+            if intent.get('experience'):
+                job_exp = str(job.get('要求经验', ''))
+                if self._check_experience_match(intent['experience'], job_exp):
+                    score += 20
+                    match_reasons.append(f"经验要求匹配")
+            
+            # 学历匹配
+            if intent.get('education'):
+                job_edu = str(job.get('学历要求', ''))
+                if self._check_education_match(intent['education'], job_edu):
+                    score += 15
+                    match_reasons.append(f"学历要求匹配")
+            
+            # 行业匹配
+            if intent.get('industry'):
+                job_industry = str(job.get('行业类型', '')).lower()
+                if intent['industry'].lower() in job_industry:
+                    score += 10
+                    match_reasons.append(f"行业匹配：{job.get('行业类型')}")
+            
+            # 技能关键词匹配
+            if intent.get('skills'):
+                job_desc = str(job.get('职位描述', '')).lower()
+                matched_skills = []
+                for skill in intent['skills']:
+                    if skill.lower() in job_desc:
+                        score += 5
+                        matched_skills.append(skill)
+                if matched_skills:
+                    match_reasons.append(f"技能匹配：{', '.join(matched_skills[:3])}")
+            
+            # 用户档案中的技能匹配
+            user_skills = self.user_profile.work_info.get('skills', [])
+            if user_skills:
+                job_desc = str(job.get('职位描述', '')).lower()
+                matched = []
+                for skill in user_skills:
+                    if str(skill).lower() in job_desc:
+                        score += 3
+                        matched.append(skill)
+                if matched:
+                    match_reasons.append(f"您的技能匹配：{', '.join([str(s) for s in matched[:3]])}")
+            
+            # 只推荐有一定匹配度的岗位
+            if score > 0:
+                recommendations.append({
+                    'position': job.get('招聘岗位', ''),
+                    'company': job.get('企业名称', ''),
+                    'city': job.get('工作城市', ''),
+                    'min_salary': job.get('最低月薪', 0),
+                    'max_salary': job.get('最高月薪', 0),
+                    'avg_salary': job.get('平均月薪', 0),
+                    'salary_range': f"{job.get('最低月薪', 0):.0f}-{job.get('最高月薪', 0):.0f} 元",
+                    'experience': job.get('要求经验', ''),
+                    'education': job.get('学历要求', ''),
+                    'industry': job.get('行业类型', ''),
+                    'company_size': job.get('企业规模', ''),
+                    'job_desc': job.get('职位描述', ''),
+                    'publish_date': job.get('招聘发布日期', ''),
+                    'match_score': min(score, 100),
+                    'match_reasons': match_reasons,
+                })
+        
+        # 按匹配度排序
+        recommendations.sort(key=lambda x: x['match_score'], reverse=True)
+        
+        return recommendations[:top_n]
+    
+    def _parse_user_intent(self, user_query: str) -> Dict:
+        """解析用户问题中的意图"""
+        intent = {
+            'position': None,
+            'city': None,
+            'min_salary': None,
+            'max_salary': None,
+            'experience': None,
+            'education': None,
+            'industry': None,
+            'skills': [],
+        }
+        
+        # 常见城市列表
+        cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '南京', '武汉', '西安', '厦门', 
+                  '重庆', '苏州', '天津', '长沙', '郑州', '青岛', '大连', '合肥', '昆明', '哈尔滨']
+        
+        # 提取城市
+        for city in cities:
+            if city in user_query:
+                intent['city'] = city
+                break
+        
+        # 提取岗位关键词
+        position_keywords = ['开发', '工程师', '经理', '总监', '专员', '设计师', '分析师', 
+                           '产品经理', '运营', '销售', '市场', '财务', '会计', '人事', '行政',
+                           'Java', 'Python', '前端', '后端', '测试', '数据', '算法', 'AI']
+        for keyword in position_keywords:
+            if keyword in user_query:
+                # 尝试提取更完整的岗位名称
+                pos_match = re.search(r'([\u4e00-\u9fa5a-zA-Z]+' + keyword + r')', user_query)
+                if pos_match:
+                    intent['position'] = pos_match.group(1)
+                else:
+                    intent['position'] = keyword
+                break
+        
+        # 提取薪资
+        salary_match = re.search(r'(\d+)[kK]?[到至-](\d+)[kK]?', user_query)
+        if salary_match:
+            intent['min_salary'] = int(salary_match.group(1)) * 1000
+            intent['max_salary'] = int(salary_match.group(2)) * 1000
+        else:
+            salary_single = re.search(r'(\d+)[kK]?', user_query)
+            if salary_single and ('千' in user_query or 'k' in user_query.lower()):
+                intent['min_salary'] = int(salary_single.group(1)) * 1000
+        
+        # 提取经验要求
+        exp_match = re.search(r'(\d+)[年]+?经验', user_query)
+        if exp_match:
+            intent['experience'] = int(exp_match.group(1))
+        elif '应届' in user_query or '在校生' in user_query:
+            intent['experience'] = 0
+        elif '经验不限' in user_query:
+            intent['experience'] = -1
+        
+        # 提取学历要求
+        edu_keywords = ['博士', '硕士', '本科', '大专', '专科']
+        for edu in edu_keywords:
+            if edu in user_query:
+                intent['education'] = edu
+                break
+        
+        # 提取行业
+        industry_keywords = ['互联网', '金融', '教育', '医疗', '电商', '游戏', '制造', 
+                           '房地产', '咨询', '传媒', '物流', '能源', '农业']
+        for industry in industry_keywords:
+            if industry in user_query:
+                intent['industry'] = industry
+                break
+        
+        # 提取技能
+        skill_keywords = ['Python', 'Java', 'JavaScript', 'C++', 'Vue', 'React', 'Spring', 
+                         'MySQL', 'Redis', 'Docker', '数据分析', '机器学习', '深度学习',
+                         'HTML', 'CSS', 'Linux', 'Git', '项目管理']
+        for skill in skill_keywords:
+            if skill.lower() in user_query.lower():
+                intent['skills'].append(skill)
+        
+        # 使用用户档案补充信息
+        if not intent['position'] and self.user_profile.job_intention.get('target_position'):
+            intent['position'] = self.user_profile.job_intention['target_position']
+        
+        if not intent['city'] and self.user_profile.job_intention.get('target_city'):
+            intent['city'] = self.user_profile.job_intention['target_city']
+        
+        return intent
+    
+    def _check_experience_match(self, user_exp, job_exp_str: str) -> bool:
+        """检查经验是否匹配"""
+        if user_exp == -1:  # 经验不限
+            return True
+        
+        # 解析岗位要求
+        exp_numbers = re.findall(r'\d+', str(job_exp_str))
+        if not exp_numbers:
+            return True  # 经验不限
+        
+        min_exp = int(exp_numbers[0])
+        return user_exp >= min_exp
+    
+    def _check_education_match(self, user_edu: str, job_edu: str) -> bool:
+        """检查学历是否匹配"""
+        edu_levels = {'博士': 5, '硕士': 4, '本科': 3, '大专': 2, '专科': 2}
+        user_level = edu_levels.get(user_edu, 0)
+        job_level = edu_levels.get(job_edu, 0)
+        
+        return user_level >= job_level
     
     def career_planning(self, current_situation: str) -> str:
         """职业规划建议"""
