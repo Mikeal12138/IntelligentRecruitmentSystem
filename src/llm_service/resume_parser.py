@@ -70,6 +70,7 @@ class ResumeParser:
     def extract_text_from_pdf(self, file_path) -> str:
         """从 PDF 文件提取文本"""
         text = ""
+        errors = []
         
         # 方法 1：尝试 pdfplumber
         try:
@@ -81,9 +82,11 @@ class ResumeParser:
                         safe_text = page_text.encode('utf-8', errors='replace').decode('utf-8')
                         text += safe_text + "\n"
             if text.strip():
+                print(f"[PDF] pdfplumber 提取成功，共 {len(text)} 字符")
                 return text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            errors.append(f"pdfplumber: {safe_error}")
             print(f"[PDF] pdfplumber 提取失败: {safe_error}")
         
         # 方法 2：尝试 PyPDF2
@@ -98,9 +101,11 @@ class ResumeParser:
                         safe_text = page_text.encode('utf-8', errors='replace').decode('utf-8')
                         text += safe_text + "\n"
             if text.strip():
+                print(f"[PDF] PyPDF2 提取成功，共 {len(text)} 字符")
                 return text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            errors.append(f"PyPDF2: {safe_error}")
             print(f"[PDF] PyPDF2 提取失败: {safe_error}")
         
         # 方法 3：尝试 pdfminer
@@ -109,16 +114,35 @@ class ResumeParser:
             text = pdfminer_extract(file_path)
             if text.strip():
                 safe_text = text.encode('utf-8', errors='replace').decode('utf-8')
+                print(f"[PDF] pdfminer 提取成功，共 {len(safe_text)} 字符")
                 return safe_text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            errors.append(f"pdfminer: {safe_error}")
             print(f"[PDF] pdfminer 提取失败: {safe_error}")
         
-        # 如果所有方法都失败，返回空字符串
-        if not text.strip():
-            raise ValueError("无法从 PDF 中提取文本，可能是扫描版 PDF 或格式特殊")
+        # 如果所有方法都失败，尝试使用 fitz (PyMuPDF)
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(file_path)
+            text = ""
+            for page in doc:
+                page_text = page.get_text()
+                if page_text:
+                    safe_text = page_text.encode('utf-8', errors='replace').decode('utf-8')
+                    text += safe_text + "\n"
+            doc.close()
+            if text.strip():
+                print(f"[PDF] PyMuPDF 提取成功，共 {len(text)} 字符")
+                return text
+        except Exception as e:
+            safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
+            errors.append(f"PyMuPDF: {safe_error}")
+            print(f"[PDF] PyMuPDF 提取失败: {safe_error}")
         
-        return text
+        # 如果所有方法都失败，给出详细错误信息
+        error_summary = "\n".join(errors) if errors else "未知错误"
+        raise ValueError(f"无法从 PDF 中提取文本。可能的原因：\n1. PDF是扫描版或图片类型\n2. PDF格式特殊或损坏\n3. 缺少必要的解析库\n\n详细错误：\n{error_summary}")
     
     def extract_text_from_docx(self, file_path) -> str:
         """从 Word 文档提取文本"""
