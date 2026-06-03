@@ -48,9 +48,9 @@ class JobSearchService:
                     "charset": "utf8mb4"
                 }
                 self.db_connection = mysql.connector.connect(**db_config)
-                print("[Search] 数据库连接成功")
+                # print("[Search] 数据库连接成功")
             except Exception as e:
-                print(f"[Search] 数据库连接失败：{e}")
+                # print(f"[Search] 数据库连接失败：{e}")
                 self.db_connection = None
         return self.db_connection
     
@@ -61,9 +61,9 @@ class JobSearchService:
                 data = pickle.load(f)
             self.vectorizer = data['vectorizer']
             self.stopwords = data.get('stopwords', set())
-            print(f"[Search] 已加载 TF-IDF 模型: {tfidf_path}")
+            # print(f"[Search] 已加载 TF-IDF 模型: {tfidf_path}")
         else:
-            print(f"[Search] 警告: TF-IDF 模型不存在: {tfidf_path}")
+            # print(f"[Search] 警告: TF-IDF 模型不存在: {tfidf_path}")
     
     def _load_data(self):
         """从数据库或 CSV 加载数据"""
@@ -74,19 +74,19 @@ class JobSearchService:
                 try:
                     query = "SELECT * FROM recruitment_data"
                     self.df = pd.read_sql(query, conn)
-                    print(f"[Search] 从数据库加载 {len(self.df)} 条岗位数据")
+                    # print(f"[Search] 从数据库加载 {len(self.df)} 条岗位数据")
                     self._build_tfidf_matrix()
                     return
                 except Exception as e:
-                    print(f"[Search] 数据库查询失败：{e}，尝试从 CSV 加载")
+                    # print(f"[Search] 数据库查询失败：{e}，尝试从 CSV 加载")
         
         # 如果数据库加载失败，从 CSV 加载
         if self.data_path and os.path.exists(self.data_path):
             self.df = pd.read_csv(self.data_path, encoding='utf-8')
-            print(f"[Search] 从 CSV 加载 {len(self.df)} 条岗位数据")
+            # print(f"[Search] 从 CSV 加载 {len(self.df)} 条岗位数据")
             self._build_tfidf_matrix()
         else:
-            print(f"[Search] 警告: 数据文件不存在: {self.data_path}")
+            # print(f"[Search] 警告: 数据文件不存在: {self.data_path}")
             self.df = pd.DataFrame()
     
     def _build_tfidf_matrix(self):
@@ -94,7 +94,7 @@ class JobSearchService:
             return
         texts = (self.df['招聘岗位'].astype(str) + ' ' + self.df['职位描述'].astype(str)).tolist()
         self.tfidf_matrix = self.vectorizer.transform(texts)
-        print(f"[Search] TF-IDF 矩阵构建完成: {self.tfidf_matrix.shape}")
+        # print(f"[Search] TF-IDF 矩阵构建完成: {self.tfidf_matrix.shape}")
     
     def parse_query(self, query_text):
         """

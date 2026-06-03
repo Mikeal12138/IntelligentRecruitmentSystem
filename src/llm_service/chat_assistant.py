@@ -138,7 +138,7 @@ class ChatAssistant:
         if os.path.exists(data_path):
             self.job_data = pd.read_csv(data_path, encoding='utf-8')
         
-        print(f"[ChatAssistant] 初始化完成，模型：{self.model}")
+        # print(f"[ChatAssistant] 初始化完成，模型：{self.model}")
     
     def _build_system_prompt(self) -> str:
         """构建系统提示词"""

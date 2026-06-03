@@ -34,10 +34,10 @@ st.set_page_config(
 @st.cache_resource
 def init_parser():
     api_key = os.getenv("LLM_API_KEY")
-    if api_key:
-        print("[ResumeParser] 已从环境变量加载 API Key")
-    else:
-        print("[ResumeParser] 警告：未找到环境变量 LLM_API_KEY")
+    # if api_key:
+    #     print("[ResumeParser] 已从环境变量加载 API Key")
+    # else:
+    #     print("[ResumeParser] 警告：未找到环境变量 LLM_API_KEY")
     return ResumeParser(api_key=api_key)
 
 # 初始化 Session State
@@ -124,15 +124,15 @@ with tab1:
             st.info("💡 请检查：1) LLM_API_KEY 是否正确配置  2) 网络连接是否正常  3) PDF 文件是否为扫描版")
         elif 'parsed_data' not in result:
             st.error("❌ 解析结果格式异常")
-            st.write("**调试信息：**")
-            st.json(result)
+            # st.write("**调试信息：**")
+            # st.json(result)
         else:
             parsed = result['parsed_data']
             
             # 显示调试信息
-            with st.expander("🔧 调试信息（点击展开）"):
-                st.write("**解析的原始数据：**")
-                st.json(parsed)
+            # with st.expander("🔧 调试信息（点击展开）"):
+            #     st.write("**解析的原始数据：**")
+            #     st.json(parsed)
             
             st.divider()
             st.subheader("📋 解析结果")

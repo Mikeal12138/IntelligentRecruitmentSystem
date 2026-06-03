@@ -37,7 +37,7 @@ class ResumeParser:
                 api_key=self.api_key,
                 base_url=self.base_url
             )
-            print(f"[ResumeParser] 初始化成功，API Base: {self.base_url}")
+            # print(f"[ResumeParser] 初始化成功，API Base: {self.base_url}")
         self.job_skills = self._load_job_skills()
     
     def _load_job_skills(self):
@@ -143,12 +143,12 @@ class ResumeParser:
         if not self.client:
             raise ValueError("未配置 LLM API Key，请在环境变量中设置 LLM_API_KEY")
         
-        print(f"[ResumeParser] 开始解析简历，文本长度：{len(resume_text)} 字符")
+        # print(f"[ResumeParser] 开始解析简历，文本长度：{len(resume_text)} 字符")
         
         # 如果简历文本太长，截取前 8000 字符
         if len(resume_text) > 8000:
             resume_text = resume_text[:8000] + "\n...（内容过长，已截断）"
-            print(f"[ResumeParser] 文本过长，已截断至 8000 字符")
+            # print(f"[ResumeParser] 文本过长，已截断至 8000 字符")
         
         prompt = f"""
 请解析以下简历内容，提取关键信息并返回 JSON 格式。
@@ -197,7 +197,7 @@ class ResumeParser:
 """
         
         try:
-            print(f"[ResumeParser] 正在调用 LLM API...")
+            # print(f"[ResumeParser] 正在调用 LLM API...")
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -210,24 +210,24 @@ class ResumeParser:
             )
             
             result_text = response.choices[0].message.content
-            print(f"[ResumeParser] API 返回内容长度：{len(result_text)} 字符")
-            print(f"[ResumeParser] API 返回内容预览：{result_text[:200]}...")
+            # print(f"[ResumeParser] API 返回内容长度：{len(result_text)} 字符")
+            # print(f"[ResumeParser] API 返回内容预览：{result_text[:200]}...")
             
             # 提取 JSON 部分
             json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
             if json_match:
                 parsed_data = json.loads(json_match.group())
-                print(f"[ResumeParser] JSON 解析成功")
+                # print(f"[ResumeParser] JSON 解析成功")
                 return parsed_data
             else:
-                print(f"[ResumeParser] 警告：未找到 JSON 格式数据")
+                # print(f"[ResumeParser] 警告：未找到 JSON 格式数据")
                 return {"error": "API 返回格式异常，未找到 JSON 数据"}
         except json.JSONDecodeError as e:
-            print(f"[ResumeParser] JSON 解析失败：{str(e)}")
+            # print(f"[ResumeParser] JSON 解析失败：{str(e)}")
             return {"error": f"JSON 解析失败：{str(e)}"}
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
-            print(f"[ResumeParser] API 调用失败：{safe_error}")
+            # print(f"[ResumeParser] API 调用失败：{safe_error}")
             return {"error": f"解析失败：{safe_error}"}
     
     def evaluate_resume(self, parsed_data: Dict, target_position=None) -> Dict:
@@ -370,7 +370,7 @@ class ResumeParser:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                print(f"[ResumeParser] 正在生成改进建议 (尝试 {attempt + 1}/{max_retries})...")
+                # print(f"[ResumeParser] 正在生成改进建议 (尝试 {attempt + 1}/{max_retries})...")
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
@@ -381,10 +381,10 @@ class ResumeParser:
                     max_tokens=1500,
                     timeout=300,  # 5 分钟超时
                 )
-                print(f"[ResumeParser] 改进建议生成成功")
+                # print(f"[ResumeParser] 改进建议生成成功")
                 return response.choices[0].message.content
             except Exception as e:
-                print(f"[ResumeParser] 尝试 {attempt + 1} 失败：{str(e)}")
+                # print(f"[ResumeParser] 尝试 {attempt + 1} 失败：{str(e)}")
                 if attempt == max_retries - 1:
                     return f"生成报告失败（已重试 {max_retries} 次）：{str(e)}"
                 import time
@@ -399,10 +399,10 @@ class ResumeParser:
             error_msg = str(e)
             # 安全地打印错误信息，避免编码问题
             safe_msg = error_msg.encode('utf-8', errors='replace').decode('utf-8')
-            print(f"[ResumeParser] 文本提取失败：{safe_msg}")
+            # print(f"[ResumeParser] 文本提取失败：{safe_msg}")
             return {"error": f"PDF 文本提取失败：{safe_msg}"}
         
-        print(f"[ResumeParser] 提取的文本长度：{len(resume_text)} 字符")
+        # print(f"[ResumeParser] 提取的文本长度：{len(resume_text)} 字符")
         
         if not resume_text.strip():
             return {"error": "PDF 文本提取失败，无法获取简历内容。可能是扫描版 PDF 或格式不支持。"}
@@ -437,13 +437,13 @@ class ResumeParser:
         )
         
         if not os.path.exists(data_path):
-            print("[ResumeParser] 警告：招聘数据文件不存在")
+            # print("[ResumeParser] 警告：招聘数据文件不存在")
             return []
         
         try:
             df = pd.read_csv(data_path, encoding='utf-8')
         except Exception as e:
-            print(f"[ResumeParser] 加载招聘数据失败：{str(e)}")
+            # print(f"[ResumeParser] 加载招聘数据失败：{str(e)}")
             return []
         
         # 提取简历关键信息
