@@ -20,11 +20,45 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 DATA_PATH = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data\cleaned_recruitment_data.csv'
 df = pd.read_csv(DATA_PATH, encoding='utf-8-sig')
 
+VIZ_BASE_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\visualization'
+
+# 分类子目录（中文名）
+CATEGORIES = {
+    'salary': '薪资分析',
+    'enterprise': '企业分析',
+    'skills': '岗位技能',
+    'education': '学历经验',
+    'industry': '行业技术',
+    'recruitment': '招聘类别',
+    'trend': '趋势分析',
+    'skill_analysis': '技能分析',
+    'cluster': '聚类分析'
+}
+
+for cat in CATEGORIES.values():
+    os.makedirs(os.path.join(VIZ_BASE_DIR, cat), exist_ok=True)
+
 print("=" * 60)
 print("数据可视化模块")
 print("=" * 60)
 print(f"数据集: {df.shape[0]} 行, {df.shape[1]} 列")
-print(f"输出目录: {OUTPUT_DIR}\n")
+print(f"输出目录: {VIZ_BASE_DIR}\n")
+
+def save_fig(fig, category, filename):
+    """保存图表到分类目录"""
+    cat_dir = os.path.join(VIZ_BASE_DIR, category)
+    filepath = os.path.join(cat_dir, filename)
+    fig.savefig(filepath, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  [✓] {category}/{filename} 已保存")
+
+def save_wc(fig, category, filename):
+    """保存词云到分类目录"""
+    cat_dir = os.path.join(VIZ_BASE_DIR, category)
+    filepath = os.path.join(cat_dir, filename)
+    fig.savefig(filepath, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  [✓] {category}/{filename} 已保存")
 
 # ============================================================
 # 1. 薪资分析：不同岗位月平均薪资及年终奖分布
@@ -33,57 +67,59 @@ print("=" * 60)
 print("【1】薪资分析可视化")
 print("=" * 60)
 
-# 1.1 各岗位平均薪资柱状图
-fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-fig.suptitle('招聘薪资分析报告', fontsize=18, fontweight='bold')
-
-# 1.1.1 Top 15 岗位平均薪资
+# 1.1 Top 15 岗位平均薪资
 top_15_jobs = df.groupby('招聘岗位')['平均月薪'].agg(['mean', 'count']).query('count >= 5')
 top_15_jobs = top_15_jobs.sort_values('mean', ascending=False).head(15)
 
-ax1 = axes[0, 0]
+fig1, ax1 = plt.subplots(figsize=(10, 8))
 colors1 = plt.cm.viridis(np.linspace(0.2, 0.8, len(top_15_jobs)))
 bars1 = ax1.barh(range(len(top_15_jobs)), top_15_jobs['mean'], color=colors1, height=0.7)
 ax1.set_yticks(range(len(top_15_jobs)))
 ax1.set_yticklabels(top_15_jobs.index, fontsize=9)
 ax1.set_xlabel('平均月薪 (元)')
-ax1.set_title('Top 15 岗位平均月薪', fontweight='bold')
+ax1.set_title('Top 15 岗位平均月薪', fontweight='bold', fontsize=14)
 ax1.invert_yaxis()
 for i, (bar, val) in enumerate(zip(bars1, top_15_jobs['mean'])):
-    ax1.text(val + 100, bar.get_y() + bar.get_height()/2, f'{val:.0f}', 
+    ax1.text(val + 100, bar.get_y() + bar.get_height()/2, f'{val:.0f}',
              va='center', fontsize=8)
 ax1.grid(axis='x', alpha=0.3)
+plt.tight_layout()
+save_fig(fig1, '薪资分析', '01_Top15岗位平均月薪.png')
 
-# 1.1.2 薪资等级分布饼图
-ax2 = axes[0, 1]
+# 1.2 薪资等级分布饼图
+fig2, ax2 = plt.subplots(figsize=(8, 8))
 salary_grade_counts = df['薪资等级'].value_counts()
 grade_order = ['5K以下', '5K-8K', '8K-12K', '12K-20K', '20K-30K', '30K以上']
 salary_grade_counts = salary_grade_counts.reindex(grade_order)
 colors2 = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0', '#ffb3e6']
-wedges, texts, autotexts = ax2.pie(salary_grade_counts.values, labels=salary_grade_counts.index, 
+wedges, texts, autotexts = ax2.pie(salary_grade_counts.values, labels=salary_grade_counts.index,
                                     autopct='%1.1f%%', colors=colors2, startangle=90,
-                                    textprops={'fontsize': 9})
+                                    textprops={'fontsize': 10})
 for text in autotexts:
-    text.set_fontsize(9)
-ax2.set_title('薪资等级分布', fontweight='bold')
+    text.set_fontsize(10)
+ax2.set_title('薪资等级分布', fontweight='bold', fontsize=14)
+plt.tight_layout()
+save_fig(fig2, '薪资分析', '02_薪资等级分布.png')
 
-# 1.1.3 各行业平均薪资
-ax3 = axes[1, 0]
+# 1.3 各行业平均薪资柱状图
+fig3, ax3 = plt.subplots(figsize=(10, 8))
 industry_salary = df.groupby('行业类型')['平均月薪'].agg(['mean', 'count']).query('count >= 10')
 industry_salary = industry_salary.sort_values('mean', ascending=False)
 colors3 = plt.cm.plasma(np.linspace(0.2, 0.8, len(industry_salary)))
 bars3 = ax3.bar(range(len(industry_salary)), industry_salary['mean'], color=colors3, width=0.7)
 ax3.set_xticks(range(len(industry_salary)))
-ax3.set_xticklabels(industry_salary.index, rotation=45, ha='right', fontsize=8)
+ax3.set_xticklabels(industry_salary.index, rotation=45, ha='right', fontsize=9)
 ax3.set_ylabel('平均月薪 (元)')
-ax3.set_title('各行业平均薪资', fontweight='bold')
+ax3.set_title('各行业平均薪资', fontweight='bold', fontsize=14)
 for bar, val in zip(bars3, industry_salary['mean']):
     ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 100, f'{val:.0f}',
-             ha='center', fontsize=7)
+             ha='center', fontsize=8)
 ax3.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+save_fig(fig3, '薪资分析', '03_各行业平均薪资.png')
 
-# 1.1.4 薪资分布箱线图
-ax4 = axes[1, 1]
+# 1.4 薪资分布箱线图
+fig4, ax4 = plt.subplots(figsize=(10, 6))
 salary_data = []
 salary_labels = []
 for grade in grade_order:
@@ -97,44 +133,40 @@ colors_box = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0', '#ffb3e6']
 for patch, color in zip(bp['boxes'], colors_box):
     patch.set_facecolor(color)
 ax4.set_ylabel('平均月薪 (元)')
-ax4.set_title('薪资等级箱线图', fontweight='bold')
+ax4.set_title('薪资等级箱线图', fontweight='bold', fontsize=14)
 ax4.grid(axis='y', alpha=0.3)
-
 plt.tight_layout()
-fig.savefig(os.path.join(OUTPUT_DIR, '01_薪资分析.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 01_薪资分析.png 已保存")
+save_fig(fig4, '薪资分析', '04_薪资等级箱线图.png')
 
-# 1.2 年终奖分布（按行业）
-fig2, axes2 = plt.subplots(1, 2, figsize=(14, 6))
-
-ax2a = axes2[0]
+# 2.1 年终奖分布（按行业）- Top 10
+fig2a, ax2a = plt.subplots(figsize=(10, 8))
 industry_bonus = df.groupby('行业类型')['年终奖估算'].mean().sort_values(ascending=False).head(10)
 colors_bonus = plt.cm.coolwarm(np.linspace(0.3, 0.9, len(industry_bonus)))
 bars_bonus = ax2a.barh(range(len(industry_bonus)), industry_bonus.values, color=colors_bonus, height=0.7)
 ax2a.set_yticks(range(len(industry_bonus)))
 ax2a.set_yticklabels(industry_bonus.index, fontsize=9)
 ax2a.set_xlabel('年终奖估算 (元)')
-ax2a.set_title('各行业年终奖估算 Top 10', fontweight='bold')
+ax2a.set_title('各行业年终奖估算 Top 10', fontweight='bold', fontsize=14)
 ax2a.invert_yaxis()
 for bar, val in zip(bars_bonus, industry_bonus.values):
     ax2a.text(val + 50, bar.get_y() + bar.get_height()/2, f'{val:.0f}',
              va='center', fontsize=8)
 ax2a.grid(axis='x', alpha=0.3)
+plt.tight_layout()
+save_fig(fig2a, '薪资分析', '05_年终奖Top10行业.png')
 
-ax2b = axes2[1]
-# 年终奖与平均月薪的散点图
+# 2.2 年终奖分布（按行业）- 月薪与年终奖散点图
+fig2b, ax2b = plt.subplots(figsize=(10, 8))
 sample = df.sample(min(500, len(df)), random_state=42)
-scatter = ax2b.scatter(sample['平均月薪'], sample['年终奖估算'], 
+scatter = ax2b.scatter(sample['平均月薪'], sample['年终奖估算'],
                        alpha=0.5, c=sample['平均月薪'], cmap='viridis', s=30)
 ax2b.set_xlabel('平均月薪 (元)')
 ax2b.set_ylabel('年终奖估算 (元)')
-ax2b.set_title('月薪与年终奖关系 (抽样500条)', fontweight='bold')
+ax2b.set_title('月薪与年终奖关系 (抽样500条)', fontweight='bold', fontsize=14)
 ax2b.grid(alpha=0.3)
 plt.colorbar(scatter, ax=ax2b, label='平均月薪')
-
 plt.tight_layout()
-fig2.savefig(os.path.join(OUTPUT_DIR, '02_年终奖分析.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 02_年终奖分析.png 已保存")
+save_fig(fig2b, '薪资分析', '06_月薪年终奖关系.png')
 
 # ============================================================
 # 2. 企业分析：地域分布、类型及规模特征
@@ -143,26 +175,25 @@ print("\n" + "=" * 60)
 print("【2】企业分析可视化")
 print("=" * 60)
 
-fig3, axes3 = plt.subplots(2, 2, figsize=(16, 12))
-fig3.suptitle('企业特征分析报告', fontsize=18, fontweight='bold')
-
-# 2.1 工作城市 Top 15 分布
-ax3a = axes3[0, 0]
+# 3. 企业分析可视化 - Top 15 工作城市岗位分布
+fig3a, ax3a = plt.subplots(figsize=(10, 8))
 top_cities = df['工作城市'].value_counts().head(15)
 colors_city = plt.cm.RdYlGn(np.linspace(0.2, 0.8, len(top_cities)))
 bars_city = ax3a.barh(range(len(top_cities)), top_cities.values, color=colors_city, height=0.7)
 ax3a.set_yticks(range(len(top_cities)))
 ax3a.set_yticklabels(top_cities.index, fontsize=9)
 ax3a.set_xlabel('岗位数量')
-ax3a.set_title('Top 15 工作城市岗位分布', fontweight='bold')
+ax3a.set_title('Top 15 工作城市岗位分布', fontweight='bold', fontsize=14)
 ax3a.invert_yaxis()
 for bar, val in zip(bars_city, top_cities.values):
     ax3a.text(val + 20, bar.get_y() + bar.get_height()/2, str(val),
              va='center', fontsize=9)
 ax3a.grid(axis='x', alpha=0.3)
+plt.tight_layout()
+save_fig(fig3a, '企业分析', '01_工作城市分布.png')
 
-# 2.2 行业类型分布
-ax3b = axes3[0, 1]
+# 3.2 企业分析可视化 - 行业类型分布
+fig3b, ax3b = plt.subplots(figsize=(8, 8))
 industry_counts = df['行业类型'].value_counts()
 # 合并占比小于2%的到"其他"
 small_mask = industry_counts / len(df) < 0.02
@@ -177,10 +208,12 @@ wedges3, texts3, autotexts3 = ax3b.pie(industry_counts.values, labels=industry_c
                                         textprops={'fontsize': 9})
 for text in autotexts3:
     text.set_fontsize(8)
-ax3b.set_title('行业类型分布', fontweight='bold')
+ax3b.set_title('行业类型分布', fontweight='bold', fontsize=14)
+plt.tight_layout()
+save_fig(fig3b, '企业分析', '02_行业类型分布.png')
 
-# 2.3 企业规模分布
-ax3c = axes3[1, 0]
+# 3.3 企业分析可视化 - 企业规模分布
+fig3c, ax3c = plt.subplots(figsize=(8, 8))
 size_counts = df['企业规模'].value_counts()
 colors_size = ['#ff9999', '#66b3ff', '#99ff99']
 wedges4, texts4, autotexts4 = ax3c.pie(size_counts.values, labels=size_counts.index,
@@ -188,10 +221,12 @@ wedges4, texts4, autotexts4 = ax3c.pie(size_counts.values, labels=size_counts.in
                                         textprops={'fontsize': 10})
 for text in autotexts4:
     text.set_fontsize(10)
-ax3c.set_title('企业规模分布', fontweight='bold')
+ax3c.set_title('企业规模分布', fontweight='bold', fontsize=14)
+plt.tight_layout()
+save_fig(fig3c, '企业分析', '03_企业规模分布.png')
 
-# 2.4 城市 × 行业热力图
-ax3d = axes3[1, 1]
+# 3.4 企业分析可视化 - 城市 × 行业热力图
+fig3d, ax3d = plt.subplots(figsize=(10, 8))
 top_10_cities = df['工作城市'].value_counts().head(10).index
 top_5_industries = df['行业类型'].value_counts().head(5).index
 pivot_data = df[df['工作城市'].isin(top_10_cities) & df['行业类型'].isin(top_5_industries)]
@@ -200,13 +235,11 @@ pivot_table = pivot_table.reindex(top_10_cities)[top_5_industries]
 
 sns.heatmap(pivot_table, annot=True, fmt='d', cmap='YlOrRd', ax=ax3d, linewidths=0.5,
             cbar_kws={'label': '岗位数量'})
-ax3d.set_title('城市 × 行业 岗位数量热力图', fontweight='bold')
+ax3d.set_title('城市 × 行业 岗位数量热力图', fontweight='bold', fontsize=14)
 ax3d.tick_params(axis='x', rotation=45)
 ax3d.tick_params(axis='y', labelsize=8)
-
 plt.tight_layout()
-fig3.savefig(os.path.join(OUTPUT_DIR, '03_企业分析.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 03_企业分析.png 已保存")
+save_fig(fig3d, '企业分析', '04_城市行业热力图.png')
 
 # ============================================================
 # 3. 岗位需求词云：技能要求与福利待遇关键词
@@ -549,13 +582,11 @@ wc = WordCloud(
 )
 wc.generate_from_frequencies(top_words)
 
-plt.figure(figsize=(12, 9))
-plt.imshow(wc, interpolation='bilinear')
-plt.axis('off')
-plt.title('岗位技能需求词云', fontsize=18, fontweight='bold', pad=20)
-plt.savefig(os.path.join(OUTPUT_DIR, '04_技能需求词云.png'), dpi=150, bbox_inches='tight')
-plt.close()
-print("  [✓] 04_技能需求词云.png 已保存")
+fig_wc_skills, ax_wc_skills = plt.subplots(figsize=(12, 9))
+ax_wc_skills.imshow(wc, interpolation='bilinear')
+ax_wc_skills.axis('off')
+ax_wc_skills.set_title('岗位技能需求词云', fontsize=18, fontweight='bold', pad=20)
+save_wc(fig_wc_skills, '岗位技能', '01_技能需求词云.png')
 
 # 3.2 Top 20 技能关键词柱状图
 fig5, ax5 = plt.subplots(figsize=(12, 8))
@@ -573,8 +604,7 @@ for bar, val in zip(bars_words, list(top_20_words.values())[::-1]):
              va='center', fontsize=10)
 ax5.grid(axis='x', alpha=0.3)
 plt.tight_layout()
-fig5.savefig(os.path.join(OUTPUT_DIR, '05_技能关键词Top20.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 05_技能关键词Top20.png 已保存")
+save_fig(fig5, '岗位技能', '02_技能关键词Top20.png')
 
 # ============================================================
 # 4. 学历要求与工作经验分布
@@ -583,11 +613,8 @@ print("\n" + "=" * 60)
 print("【4】学历与经验分析")
 print("=" * 60)
 
-fig6, axes6 = plt.subplots(2, 2, figsize=(16, 12))
-fig6.suptitle('学历与工作经验需求分析', fontsize=18, fontweight='bold')
-
 # 4.1 学历要求分布饼图
-ax6a = axes6[0, 0]
+fig6a, ax6a = plt.subplots(figsize=(8, 8))
 edu_counts = df['学历要求'].value_counts()
 edu_order = ['初中及以下', '高中', '中专', '中技', '大专', '本科', '硕士', '博士', '学历不限']
 edu_counts = edu_counts.reindex(edu_order).fillna(0)
@@ -596,13 +623,15 @@ edu_counts = edu_counts[edu_counts > 0]
 colors_edu = ['#ff6b6b', '#ffa06b', '#ffd56b', '#fff36b', '#6bffb3', '#6bdeff', '#9b6bff', '#ff6bde', '#c0c0c0']
 wedges6, texts6, autotexts6 = ax6a.pie(edu_counts.values, labels=edu_counts.index,
                                         autopct='%1.1f%%', colors=colors_edu, startangle=90,
-                                        textprops={'fontsize': 9})
+                                        textprops={'fontsize': 10})
 for text in autotexts6:
-    text.set_fontsize(9)
-ax6a.set_title('学历要求分布', fontweight='bold')
+    text.set_fontsize(10)
+ax6a.set_title('学历要求分布', fontweight='bold', fontsize=14)
+plt.tight_layout()
+save_fig(fig6a, '学历经验', '01_学历要求分布.png')
 
 # 4.2 经验要求分布
-ax6b = axes6[0, 1]
+fig6b, ax6b = plt.subplots(figsize=(8, 8))
 exp_counts = df['要求经验'].value_counts()
 exp_order = ['1年以下', '1-3年', '3-5年', '5-10年', '10年以上', '经验不限']
 exp_counts = exp_counts.reindex(exp_order).fillna(0)
@@ -611,13 +640,15 @@ exp_counts = exp_counts[exp_counts > 0]
 colors_exp = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0', '#ffb3e6']
 wedges7, texts7, autotexts7 = ax6b.pie(exp_counts.values, labels=exp_counts.index,
                                         autopct='%1.1f%%', colors=colors_exp, startangle=90,
-                                        textprops={'fontsize': 9})
+                                        textprops={'fontsize': 10})
 for text in autotexts7:
-    text.set_fontsize(9)
-ax6b.set_title('经验要求分布', fontweight='bold')
+    text.set_fontsize(10)
+ax6b.set_title('经验要求分布', fontweight='bold', fontsize=14)
+plt.tight_layout()
+save_fig(fig6b, '学历经验', '02_经验要求分布.png')
 
 # 4.3 学历 × 薪资箱线图
-ax6c = axes6[1, 0]
+fig6c, ax6c = plt.subplots(figsize=(10, 6))
 edu_salary_data = []
 edu_labels = []
 for edu in ['大专', '本科', '硕士', '博士']:
@@ -631,11 +662,13 @@ colors_edu_box = ['#6bffb3', '#6bdeff', '#9b6bff', '#ff6bde']
 for patch, color in zip(bp2['boxes'], colors_edu_box):
     patch.set_facecolor(color)
 ax6c.set_ylabel('平均月薪 (元)')
-ax6c.set_title('学历 vs 薪资分布', fontweight='bold')
+ax6c.set_title('学历 vs 薪资分布', fontweight='bold', fontsize=14)
 ax6c.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+save_fig(fig6c, '学历经验', '03_学历vs薪资.png')
 
 # 4.4 经验 × 薪资箱线图
-ax6d = axes6[1, 1]
+fig6d, ax6d = plt.subplots(figsize=(10, 6))
 exp_salary_data = []
 exp_labels = []
 for exp in ['1年以下', '1-3年', '3-5年', '5-10年', '10年以上']:
@@ -649,12 +682,10 @@ colors_exp_box = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#c2c2f0']
 for patch, color in zip(bp3['boxes'], colors_exp_box):
     patch.set_facecolor(color)
 ax6d.set_ylabel('平均月薪 (元)')
-ax6d.set_title('经验 vs 薪资分布', fontweight='bold')
+ax6d.set_title('经验 vs 薪资分布', fontweight='bold', fontsize=14)
 ax6d.grid(axis='y', alpha=0.3)
-
 plt.tight_layout()
-fig6.savefig(os.path.join(OUTPUT_DIR, '06_学历经验分析.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 06_学历经验分析.png 已保存")
+save_fig(fig6d, '学历经验', '04_经验vs薪资.png')
 
 # ============================================================
 # 5. 行业技术热点分析
@@ -663,25 +694,26 @@ print("\n" + "=" * 60)
 print("【5】行业技术热点分析")
 print("=" * 60)
 
-# 5.1 按行业统计岗位数量
-fig7, axes7 = plt.subplots(1, 2, figsize=(14, 6))
-
-ax7a = axes7[0]
+# 5.1 行业技术热点 - 各行业岗位数量分布
+fig7a, ax7a = plt.subplots(figsize=(10, 8))
 industry_job_counts = df['行业类型'].value_counts().sort_values(ascending=False)
 colors_hot = plt.cm.RdYlGn(np.linspace(0.2, 0.8, len(industry_job_counts)))
-bars7 = ax7a.barh(range(len(industry_job_counts)), industry_job_counts.values, 
+bars7 = ax7a.barh(range(len(industry_job_counts)), industry_job_counts.values,
                   color=colors_hot, height=0.7)
 ax7a.set_yticks(range(len(industry_job_counts)))
 ax7a.set_yticklabels(industry_job_counts.index, fontsize=9)
 ax7a.set_xlabel('岗位数量')
-ax7a.set_title('各行业岗位数量分布', fontweight='bold')
+ax7a.set_title('各行业岗位数量分布', fontweight='bold', fontsize=14)
 ax7a.invert_yaxis()
 for bar, val in zip(bars7, industry_job_counts.values):
     ax7a.text(val + 20, bar.get_y() + bar.get_height()/2, str(val),
              va='center', fontsize=8)
 ax7a.grid(axis='x', alpha=0.3)
+plt.tight_layout()
+save_fig(fig7a, '行业技术', '01_各行业岗位数量分布.png')
 
-# 5.2 技术热点：从职位描述中提取技术关键词
+# 5.2 行业技术热点 - Top 20 技术关键词热度
+fig7b, ax7b = plt.subplots(figsize=(10, 8))
 tech_keywords = [
     'Java', 'Python', 'C++', 'JavaScript', 'Go', 'PHP', 'C#',
     'Vue', 'React', 'Angular', 'Spring', 'SpringBoot', 'SpringCloud',
@@ -714,7 +746,6 @@ for tech in tech_keywords:
 
 top_tech = dict(sorted(tech_freq.items(), key=lambda x: x[1], reverse=True)[:20])
 
-ax7b = axes7[1]
 if top_tech:
     colors_tech = plt.cm.hot(np.linspace(0.2, 0.8, len(top_tech)))
     bars_tech = ax7b.barh(range(len(top_tech)), list(top_tech.values())[::-1],
@@ -722,40 +753,151 @@ if top_tech:
     ax7b.set_yticks(range(len(top_tech)))
     ax7b.set_yticklabels(list(top_tech.keys())[::-1], fontsize=10)
     ax7b.set_xlabel('出现频次')
-    ax7b.set_title('Top 20 技术关键词热度', fontweight='bold')
+    ax7b.set_title('Top 20 技术关键词热度', fontweight='bold', fontsize=14)
     ax7b.invert_yaxis()
     for bar, val in zip(bars_tech, list(top_tech.values())[::-1]):
         ax7b.text(val + 5, bar.get_y() + bar.get_height()/2, str(val),
                  va='center', fontsize=8)
     ax7b.grid(axis='x', alpha=0.3)
-
 plt.tight_layout()
-fig7.savefig(os.path.join(OUTPUT_DIR, '07_行业技术热点.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 07_行业技术热点.png 已保存")
+save_fig(fig7b, '行业技术', '02_技术关键词热度.png')
 
 # 5.3 技术热点词云
-if top_tech:
-    wc_tech = WordCloud(
+# 词云使用所有技术关键词（不限 20 个）
+wc_tech = WordCloud(
+    font_path='C:/Windows/Fonts/simhei.ttf',
+    background_color='white',
+    max_words=200,
+    max_font_size=120,
+    min_font_size=12,
+    width=800,
+    height=600,
+    random_state=42,
+    prefer_horizontal=0.6,
+    scale=4,
+    relative_scaling=0.3,
+    collocations=True
+)
+wc_tech.generate_from_frequencies(tech_freq)
+
+fig_wc_tech, ax_wc_tech = plt.subplots(figsize=(12, 9))
+ax_wc_tech.imshow(wc_tech, interpolation='bilinear')
+ax_wc_tech.axis('off')
+ax_wc_tech.set_title('行业技术热点词云', fontsize=18, fontweight='bold', pad=20)
+save_wc(fig_wc_tech, '行业技术', '03_技术热点词云.png')
+
+# 5.3b 招聘职位关键词词云
+job_titles = df['招聘岗位'].dropna().tolist()
+all_job_text = ' '.join(job_titles)
+job_words = jieba.lcut(all_job_text)
+
+# 过滤停用词
+job_stop_words = set([
+    '工程师', '工程师', '工程师', '工程师', '工程师', '工程师', '工程师', '工程师', '工程师', '工程师',
+    '软件', '软件', '软件', '软件', '软件', '软件', '软件', '软件', '软件', '软件',
+    '开发', '开发', '开发', '开发', '开发', '开发', '开发', '开发', '开发', '开发',
+    '设计', '设计', '设计', '设计', '设计', '设计', '设计', '设计', '设计', '设计',
+    '技术', '技术', '技术', '技术', '技术', '技术', '技术', '技术', '技术', '技术',
+    '管理', '管理', '管理', '管理', '管理', '管理', '管理', '管理', '管理', '管理',
+    '分析', '分析', '分析', '分析', '分析', '分析', '分析', '分析', '分析', '分析',
+    '系统', '系统', '系统', '系统', '系统', '系统', '系统', '系统', '系统', '系统',
+    '产品', '产品', '产品', '产品', '产品', '产品', '产品', '产品', '产品', '产品',
+    '项目', '项目', '项目', '项目', '项目', '项目', '项目', '项目', '项目', '项目',
+    '服务', '服务', '服务', '服务', '服务', '服务', '服务', '服务', '服务', '服务',
+    '运营', '运营', '运营', '运营', '运营', '运营', '运营', '运营', '运营', '运营',
+    '助理', '助理', '助理', '助理', '助理', '助理', '助理', '助理', '助理', '助理',
+    '专员', '专员', '专员', '专员', '专员', '专员', '专员', '专员', '专员', '专员',
+    '主管', '主管', '主管', '主管', '主管', '主管', '主管', '主管', '主管', '主管',
+    '经理', '经理', '经理', '经理', '经理', '经理', '经理', '经理', '经理', '经理',
+    '总监', '总监', '总监', '总监', '总监', '总监', '总监', '总监', '总监', '总监',
+    '人员', '人员', '人员', '人员', '人员', '人员', '人员', '人员', '人员', '人员',
+    '代表', '代表', '代表', '代表', '代表', '代表', '代表', '代表', '代表', '代表',
+    '顾问', '顾问', '顾问', '顾问', '顾问', '顾问', '顾问', '顾问', '顾问', '顾问',
+    '实习', '实习', '实习', '实习', '实习', '实习', '实习', '实习', '实习', '实习',
+    '兼职', '兼职', '兼职', '兼职', '兼职', '兼职', '兼职', '兼职', '兼职', '兼职',
+    '全职', '全职', '全职', '全职', '全职', '全职', '全职', '全职', '全职', '全职',
+    '高级', '高级', '高级', '高级', '高级', '高级', '高级', '高级', '高级', '高级',
+    '初级', '初级', '初级', '初级', '初级', '初级', '初级', '初级', '初级', '初级',
+    '资深', '资深', '资深', '资深', '资深', '资深', '资深', '资深', '资深', '资深',
+    '专家', '专家', '专家', '专家', '专家', '专家', '专家', '专家', '专家', '专家',
+    '岗位', '岗位', '岗位', '岗位', '岗位', '岗位', '岗位', '岗位', '岗位', '岗位',
+])
+job_filtered_words = [w for w in job_words if len(w) >= 2 and w not in job_stop_words]
+job_word_freq = Counter(job_filtered_words)
+job_top_words = dict(job_word_freq.most_common(150))
+
+wc_job = WordCloud(
+    font_path='C:/Windows/Fonts/simhei.ttf',
+    background_color='white',
+    max_words=150,
+    max_font_size=100,
+    min_font_size=14,
+    width=800,
+    height=600,
+    random_state=42
+)
+wc_job.generate_from_frequencies(job_top_words)
+
+fig_wc_job, ax_wc_job = plt.subplots(figsize=(12, 9))
+ax_wc_job.imshow(wc_job, interpolation='bilinear')
+ax_wc_job.axis('off')
+ax_wc_job.set_title('招聘职位关键词词云', fontsize=18, fontweight='bold', pad=20)
+save_wc(fig_wc_job, '岗位技能', '03_招聘职位关键词词云.png')
+
+# 5.3c 福利待遇词云
+benefit_keywords = [
+    '五险一金', '年终奖', '带薪年假', '绩效奖金', '全勤奖',
+    '交通补助', '餐补', '房补', '通讯补贴', '加班补助',
+    '高温补贴', '节日福利', '生日福利', '定期体检',
+    '员工旅游', '免费班车', '免费食宿', '包吃住', '包住', '包吃',
+    '双休', '周末双休', '单休', '弹性工作', '不加班', '加班费',
+    '股票期权', '股权', '分红', '提成',
+    '培训', '晋升', '发展空间', '职业规划', '导师',
+    '下午茶', '零食', '健身房', '团建', '旅游',
+    '补充医疗保险', '补充公积金', '企业年金',
+    '产假', '陪产假', '育儿假', '婚假', '丧假',
+    '六险二金', '补充商业保险',
+    '周末双休', '早九晚六', '朝九晚五', '不打卡',
+    '扁平管理', '氛围好', '团队', '技术氛围',
+    '餐补', '车补', '话补', '住房补贴',
+    '13薪', '14薪', '15薪', '16薪', '年终奖',
+    '项目奖金', '季度奖金', '半年奖', '年度奖金',
+    '免费体检', '年度体检', '健康检查',
+    '带薪休假', '年假', '调休',
+    '弹性工作制', '远程办公', '居家办公',
+]
+
+all_descriptions2 = ' '.join(df['职位描述'].dropna().tolist())
+benefit_freq = {}
+for kw in benefit_keywords:
+    count = all_descriptions2.count(kw)
+    if count > 0:
+        benefit_freq[kw] = count
+
+if benefit_freq:
+    wc_benefit = WordCloud(
         font_path='C:/Windows/Fonts/simhei.ttf',
         background_color='white',
-        max_words=100,
-        max_font_size=80,
+        max_words=200,
+        max_font_size=120,
         min_font_size=12,
         width=800,
         height=600,
-        random_state=42
+        random_state=42,
+        prefer_horizontal=0.6,
+        scale=4,
+        relative_scaling=0.3,
+        collocations=True
     )
-    wc_tech.generate_from_frequencies(top_tech)
-    
-    plt.figure(figsize=(12, 9))
-    plt.imshow(wc_tech, interpolation='bilinear')
-    plt.axis('off')
-    plt.title('行业技术热点词云', fontsize=18, fontweight='bold', pad=20)
-    plt.savefig(os.path.join(OUTPUT_DIR, '08_技术热点词云.png'), dpi=150, bbox_inches='tight')
-    plt.close()
-    print("  [✓] 08_技术热点词云.png 已保存")
+    wc_benefit.generate_from_frequencies(benefit_freq)
 
-# 5.4 招聘类别分布
+    fig_wc_benefit, ax_wc_benefit = plt.subplots(figsize=(12, 9))
+    ax_wc_benefit.imshow(wc_benefit, interpolation='bilinear')
+    ax_wc_benefit.axis('off')
+    ax_wc_benefit.set_title('福利待遇关键词词云', fontsize=18, fontweight='bold', pad=20)
+    save_wc(fig_wc_benefit, '行业技术', '04_福利待遇词云.png')
+
+# 5.5 招聘类别分布
 fig8, ax8 = plt.subplots(figsize=(8, 6))
 cat_counts = df['招聘类别'].value_counts()
 colors_cat = ['#66b3ff', '#99ff99', '#ffcc99', '#ffb3e6']
@@ -766,8 +908,163 @@ for text in autotexts8:
     text.set_fontsize(10)
 ax8.set_title('招聘类别分布', fontweight='bold', fontsize=14)
 plt.tight_layout()
-fig8.savefig(os.path.join(OUTPUT_DIR, '09_招聘类别分布.png'), dpi=150, bbox_inches='tight')
-print("  [✓] 09_招聘类别分布.png 已保存")
+save_fig(fig8, '招聘类别', '01_招聘类别分布.png')
+
+# ============================================================
+# 6. 新增高级分析图表
+# ============================================================
+print("\n" + "=" * 60)
+print("【6】高级分析可视化")
+print("=" * 60)
+
+# 6.1 技术方向时间趋势图（按月统计）
+print("\n生成技术方向时间趋势图（按月）...")
+tech_trend_keywords = ['Java', 'Python', 'C++', 'JavaScript', 'Go', '前端', '后端', '嵌入式', '算法', '测试']
+
+# 按月份统计各技术关键词出现次数
+date_col = '招聘发布日期'
+if date_col in df.columns:
+    # 转换为日期格式
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    # 提取年月
+    df['招聘年月'] = df[date_col].dt.to_period('M')
+    
+    # 过滤数据量过少的月份（至少10条记录）
+    month_counts = df['招聘年月'].value_counts()
+    valid_months = month_counts[month_counts >= 10].index.tolist()
+    valid_months = sorted(valid_months)
+    
+    if valid_months:
+        months = valid_months
+        df_valid = df[df['招聘年月'].isin(months)]
+        all_descriptions_trend = df_valid.groupby('招聘年月')['职位描述'].apply(lambda x: ' '.join(x.dropna().tolist()))
+        
+        trend_data = {}
+        for tech in tech_trend_keywords:
+            tech_counts = []
+            for month in months:
+                if month in all_descriptions_trend.index:
+                    text = str(all_descriptions_trend[month])
+                    count = text.count(tech)
+                    tech_counts.append(count)
+                else:
+                    tech_counts.append(0)
+            trend_data[tech] = tech_counts
+        
+        # 格式化 x 轴标签为 YYYY-MM
+        month_labels = [str(m) for m in months]
+        x_pos = range(len(months))
+        
+        fig_trend, ax_trend = plt.subplots(figsize=(14, 7))
+        colors_trend = plt.cm.tab10(np.linspace(0, 1, len(tech_trend_keywords)))
+        for i, (tech, counts) in enumerate(trend_data.items()):
+            ax_trend.plot(x_pos, counts, marker='o', linewidth=2, label=tech, color=colors_trend[i], markersize=6)
+        ax_trend.set_xticks(x_pos)
+        ax_trend.set_xticklabels(month_labels, rotation=45, ha='right', fontsize=9)
+        ax_trend.set_xlabel('月份')
+        ax_trend.set_ylabel('出现频次')
+        ax_trend.set_title('各技术方向招聘市场月度趋势', fontweight='bold', fontsize=14)
+        ax_trend.legend(fontsize=10, ncol=2)
+        ax_trend.grid(alpha=0.3)
+        plt.tight_layout()
+        save_fig(fig_trend, '趋势分析', '01_技术方向月度趋势.png')
+        
+        print(f"  (有效月份: {', '.join(month_labels)})")
+    else:
+        print("  [!] 无有效月份数据，跳过时间趋势图")
+    
+    # 清理临时列
+    df.drop(columns=['招聘年月'], inplace=True, errors='ignore')
+else:
+    print(f"  [!] 缺少{date_col}字段，跳过时间趋势图")
+
+# 6.2 岗位-技能出现频率热力图
+print("\n生成岗位-技能热力图...")
+# 提取 Top 15 岗位和 Top 20 技能
+top_positions = df['招聘岗位'].value_counts().head(15).index.tolist()
+# 使用之前的技术关键词
+heatmap_skills = ['Java', 'Python', 'C++', 'JavaScript', 'Go', 'Spring', 'MySQL', 
+                  'Redis', 'Linux', 'Docker', 'Vue', 'React', '算法', '测试', 
+                  '嵌入式', '硬件', 'PCB', 'FPGA', '前端', '后端']
+
+# 构建岗位-技能矩阵
+pos_skill_matrix = pd.DataFrame(0, index=top_positions, columns=heatmap_skills)
+for idx, row in df.iterrows():
+    pos = row['招聘岗位']
+    if pos in top_positions:
+        desc = str(row['职位描述'])
+        for skill in heatmap_skills:
+            if skill in desc:
+                pos_skill_matrix.loc[pos, skill] += 1
+
+# 归一化
+pos_skill_norm = pos_skill_matrix.div(pos_skill_matrix.sum(axis=1), axis=0) * 100
+
+fig_heatmap, ax_heatmap = plt.subplots(figsize=(14, 10))
+sns.heatmap(pos_skill_norm, annot=True, fmt='.1f', cmap='YlOrRd', ax=ax_heatmap, 
+            linewidths=0.5, cbar_kws={'label': '技能提及占比 (%)'},
+            annot_kws={'fontsize': 7})
+ax_heatmap.set_title('岗位-技能出现频率热力图', fontweight='bold', fontsize=14)
+ax_heatmap.tick_params(axis='x', rotation=45, labelsize=9)
+ax_heatmap.tick_params(axis='y', labelsize=8)
+plt.tight_layout()
+save_fig(fig_heatmap, '技能分析', '02_岗位技能热力图.png')
+
+# 6.3 KMeans 聚类 + 降维展示
+print("\n生成岗位描述聚类降维图...")
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import warnings
+warnings.filterwarnings('ignore')
+
+# 取前 1000 条岗位描述（避免内存过大）
+sample_size = min(1000, len(df))
+sample_df = df.sample(sample_size, random_state=42).copy()
+sample_df = sample_df.dropna(subset=['职位描述'])
+descriptions = sample_df['职位描述'].tolist()
+positions = sample_df['招聘岗位'].tolist()
+
+if len(descriptions) > 0:
+    # TF-IDF 向量化
+    tfidf = TfidfVectorizer(max_features=500, stop_words=['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这'])
+    X_tfidf = tfidf.fit_transform(descriptions)
+    
+    # KMeans 聚类
+    n_clusters = 5
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(X_tfidf)
+    
+    # PCA 降维到 2D
+    pca = PCA(n_components=2, random_state=42)
+    X_2d = pca.fit_transform(X_tfidf.toarray())
+    
+    fig_cluster, ax_cluster = plt.subplots(figsize=(12, 9))
+    colors_cluster = ['#ff6b6b', '#6bdeff', '#99ff99', '#ffd56b', '#9b6bff']
+    
+    for i in range(n_clusters):
+        mask = cluster_labels == i
+        ax_cluster.scatter(X_2d[mask, 0], X_2d[mask, 1], 
+                          label=f'聚类 {i+1} (n={mask.sum()})',
+                          alpha=0.7, s=30, color=colors_cluster[i], edgecolors='none')
+    
+    ax_cluster.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
+    ax_cluster.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
+    ax_cluster.set_title('岗位描述 KMeans 聚类 (PCA 降维)', fontweight='bold', fontsize=14)
+    ax_cluster.legend(fontsize=10)
+    ax_cluster.grid(alpha=0.3)
+    plt.tight_layout()
+    save_fig(fig_cluster, '聚类分析', '03_岗位描述聚类降维.png')
+    
+    # 显示各聚类的代表性岗位
+    print("\n  各聚类代表性岗位：")
+    for i in range(n_clusters):
+        mask = cluster_labels == i
+        cluster_positions = pd.Series(positions)[mask].value_counts().head(3)
+        top_pos = ', '.join(cluster_positions.index.tolist())
+        print(f"    聚类 {i+1}: {top_pos}")
+else:
+    print("  [!] 数据不足，跳过聚类分析")
 
 # ============================================================
 # 汇总报告
@@ -775,18 +1072,67 @@ print("  [✓] 09_招聘类别分布.png 已保存")
 print("\n" + "=" * 60)
 print("数据可视化完成！")
 print("=" * 60)
-print(f"\n已生成图表文件（共9张）：")
+print(f"\n已生成图表文件（共25张，按分类存储）：")
+print("  💰 薪资分析/ (6张)")
 for i, name in enumerate([
-    '01_薪资分析.png',
-    '02_年终奖分析.png', 
-    '03_企业分析.png',
-    '04_技能需求词云.png',
-    '05_技能关键词Top20.png',
-    '06_学历经验分析.png',
-    '07_行业技术热点.png',
-    '08_技术热点词云.png',
-    '09_招聘类别分布.png',
+    '01_Top15岗位平均月薪.png',
+    '02_薪资等级分布.png',
+    '03_各行业平均薪资.png',
+    '04_薪资等级箱线图.png',
+    '05_年终奖Top10行业.png',
+    '06_月薪年终奖关系.png',
 ], 1):
-    print(f"  {i}. {name}")
+    print(f"    {i}. 薪资分析/{name}")
+print("  🏢 企业分析/ (4张)")
+for i, name in enumerate([
+    '01_工作城市分布.png',
+    '02_行业类型分布.png',
+    '03_企业规模分布.png',
+    '04_城市行业热力图.png',
+], 1):
+    print(f"    {i}. 企业分析/{name}")
+print("  🛠️ 岗位技能/ (3张)")
+for i, name in enumerate([
+    '01_技能需求词云.png',
+    '02_技能关键词Top20.png',
+    '03_招聘职位关键词词云.png',
+], 1):
+    print(f"    {i}. 岗位技能/{name}")
+print("  🎓 学历经验/ (4张)")
+for i, name in enumerate([
+    '01_学历要求分布.png',
+    '02_经验要求分布.png',
+    '03_学历vs薪资.png',
+    '04_经验vs薪资.png',
+], 1):
+    print(f"    {i}. 学历经验/{name}")
+print("  🔥 行业技术/ (4张)")
+for i, name in enumerate([
+    '01_各行业岗位数量分布.png',
+    '02_技术关键词热度.png',
+    '03_技术热点词云.png',
+    '04_福利待遇词云.png',
+], 1):
+    print(f"    {i}. 行业技术/{name}")
+print("  📋 招聘类别/ (1张)")
+for i, name in enumerate([
+    '01_招聘类别分布.png',
+], 1):
+    print(f"    {i}. 招聘类别/{name}")
+print("  📈 趋势分析/ (1张)")
+for i, name in enumerate([
+    '01_技术方向月度趋势.png',
+], 1):
+    print(f"    {i}. 趋势分析/{name}")
+print("  🔍 技能分析/ (1张)")
+for i, name in enumerate([
+    '02_岗位技能热力图.png',
+], 1):
+    print(f"    {i}. 技能分析/{name}")
+print("  🎯 聚类分析/ (1张)")
+for i, name in enumerate([
+    '03_岗位描述聚类降维.png',
+], 1):
+    print(f"    {i}. 聚类分析/{name}")
 
-print(f"\n输出目录: {OUTPUT_DIR}")
+print(f"\n输出目录: {VIZ_BASE_DIR}")
