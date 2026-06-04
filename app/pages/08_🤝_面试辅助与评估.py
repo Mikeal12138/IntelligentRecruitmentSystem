@@ -186,4 +186,4 @@ with tab3:
 
 # 页脚
 st.divider()
-st.info("💡 提示：配置API Key后可获得更准确的面试题生成和评分结果")
+st.info("💡 祝面试通过！")

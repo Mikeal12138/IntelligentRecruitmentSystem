@@ -64,6 +64,7 @@ class JobSearchService:
             # print(f"[Search] 已加载 TF-IDF 模型: {tfidf_path}")
         else:
             # print(f"[Search] 警告: TF-IDF 模型不存在: {tfidf_path}")
+            pass
     
     def _load_data(self):
         """从数据库或 CSV 加载数据"""
@@ -79,6 +80,7 @@ class JobSearchService:
                     return
                 except Exception as e:
                     # print(f"[Search] 数据库查询失败：{e}，尝试从 CSV 加载")
+                    pass
         
         # 如果数据库加载失败，从 CSV 加载
         if self.data_path and os.path.exists(self.data_path):
