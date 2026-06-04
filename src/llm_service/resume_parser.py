@@ -66,6 +66,7 @@ class ResumeParser:
     def extract_text_from_pdf(self, file_path) -> str:
         """从 PDF 文件提取文本"""
         text = ""
+        errors = []
         
         # 方法 1：尝试 pdfplumber
         try:
@@ -77,6 +78,7 @@ class ResumeParser:
                         safe_text = page_text.encode('utf-8', errors='replace').decode('utf-8')
                         text += safe_text + "\n"
             if text.strip():
+                print(f"[PDF] pdfplumber 提取成功，共 {len(text)} 字符")
                 return text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
@@ -94,6 +96,7 @@ class ResumeParser:
                         safe_text = page_text.encode('utf-8', errors='replace').decode('utf-8')
                         text += safe_text + "\n"
             if text.strip():
+                print(f"[PDF] PyPDF2 提取成功，共 {len(text)} 字符")
                 return text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
@@ -105,6 +108,7 @@ class ResumeParser:
             text = extract_text(file_path)
             if text and text.strip():
                 safe_text = text.encode('utf-8', errors='replace').decode('utf-8')
+                print(f"[PDF] pdfminer 提取成功，共 {len(safe_text)} 字符")
                 return safe_text
         except Exception as e:
             safe_error = str(e).encode('utf-8', errors='replace').decode('utf-8')
