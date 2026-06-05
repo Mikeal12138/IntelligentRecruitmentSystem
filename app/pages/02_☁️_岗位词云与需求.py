@@ -7,6 +7,12 @@ APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.dirname(APP_DIR)
 VIZ_DIR = os.path.join(ROOT_DIR, 'visualization')
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 def main():
     st.set_page_config(page_title="岗位词云与需求", page_icon="☁️", layout="wide")
     st.title("️ 岗位词云与需求")

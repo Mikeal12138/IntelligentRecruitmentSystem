@@ -21,6 +21,12 @@ if ROOT not in sys.path:
 
 from src.data_pipeline.db_manager import DatabaseManager
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 # 页面配置
 st.set_page_config(
     page_title="招聘数据导入MySQL",
@@ -130,9 +136,9 @@ with col2:
                 st.error("❌ 数据库创建失败")
 
 # 步骤 2：加载 CSV 数据
-st.subheader("📂 步骤 2：加载 CSV 数据")
+st.subheader(" 步骤 2：加载 CSV 数据")
 
-csv_path = os.path.join(ROOT, 'data', 'processed', 'cleaned_recruitment_data(1).csv')
+csv_path = os.path.join(ROOT, 'data', 'cleaned_recruitment_data.csv')
 
 if os.path.exists(csv_path):
     col1, col2 = st.columns(2)

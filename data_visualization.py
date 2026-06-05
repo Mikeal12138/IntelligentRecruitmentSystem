@@ -24,6 +24,9 @@ from src.data_pipeline.db_manager import DatabaseManager
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
+# 设置输出目录（使用相对路径）
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, 'visualization')
 # 设置输出目录
 OUTPUT_DIR = os.path.join(ROOT_DIR, 'visualization')
 os.makedirs(OUTPUT_DIR, exist_ok=True)

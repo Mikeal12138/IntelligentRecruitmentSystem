@@ -6,6 +6,12 @@ APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.dirname(APP_DIR)
 VIZ_DIR = os.path.join(ROOT_DIR, 'visualization')
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 def display_category(category_name, folder_path, images):
     """显示一个分类下的所有图表"""
     if os.path.exists(folder_path):
