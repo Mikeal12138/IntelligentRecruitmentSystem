@@ -22,6 +22,12 @@ if ROOT not in sys.path:
 
 from src.llm_service.resume_parser import ResumeParser
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 # 页面配置
 st.set_page_config(
     page_title="简历智能解析与评估",

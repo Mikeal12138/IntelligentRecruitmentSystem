@@ -18,6 +18,12 @@ if ROOT not in sys.path:
 
 from src.ml_engine.search_service import JobSearchService
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 # 页面配置
 st.set_page_config(
     page_title="智能岗位搜索与筛选",

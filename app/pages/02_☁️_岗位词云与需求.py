@@ -7,6 +7,12 @@ APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.dirname(APP_DIR)
 VIZ_DIR = os.path.join(ROOT_DIR, 'visualization')
 
+# 导入认证模块
+from components.auth_required import check_auth
+
+# 检查登录状态
+check_auth()
+
 def main():
     st.set_page_config(page_title="岗位词云与需求", page_icon="☁️", layout="wide")
     st.title("️ 岗位词云与需求")
@@ -42,7 +48,7 @@ def main():
                     st.caption("基于岗位描述提取的技能关键词云")
                     img_path = os.path.join(VIZ_DIR, '岗位技能', '01_技能需求词云.png')
                     if os.path.exists(img_path):
-                        st.image(img_path, width="stretch")
+                        st.image(img_path, width=600)
                     else:
                         st.warning("图片未找到")
             
@@ -53,7 +59,7 @@ def main():
                     st.caption("基于招聘岗位名称提取的关键词云")
                     img_path = os.path.join(VIZ_DIR, '岗位技能', '03_招聘职位关键词词云.png')
                     if os.path.exists(img_path):
-                        st.image(img_path, width="stretch")
+                        st.image(img_path, width=600)
                     else:
                         st.warning("图片未找到")
     
@@ -72,7 +78,7 @@ def main():
                     st.caption("行业技术关键词热度分布")
                     img_path = os.path.join(VIZ_DIR, '行业技术', '03_技术热点词云.png')
                     if os.path.exists(img_path):
-                        st.image(img_path, width="stretch")
+                        st.image(img_path, width=600)
                     else:
                         st.warning("图片未找到")
             
@@ -83,7 +89,7 @@ def main():
                     st.caption("岗位福利待遇关键词分布")
                     img_path = os.path.join(VIZ_DIR, '行业技术', '04_福利待遇词云.png')
                     if os.path.exists(img_path):
-                        st.image(img_path, width="stretch")
+                        st.image(img_path, width=600)
                     else:
                         st.warning("图片未找到")
 

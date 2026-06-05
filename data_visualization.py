@@ -12,15 +12,16 @@ from collections import Counter
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
-# 设置输出目录
-OUTPUT_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\visualization'
+# 设置输出目录（使用相对路径）
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, 'visualization')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# 读取清洗后的数据
-DATA_PATH = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data\cleaned_recruitment_data.csv'
+# 读取清洗后的数据（使用相对路径）
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'cleaned_recruitment_data.csv')
 df = pd.read_csv(DATA_PATH, encoding='utf-8-sig')
 
-VIZ_BASE_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\visualization'
+VIZ_BASE_DIR = OUTPUT_DIR
 
 # 分类子目录（中文名）
 CATEGORIES = {
