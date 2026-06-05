@@ -176,8 +176,8 @@ with tab1:
         st.subheader(f"📄 搜索结果 ({len(st.session_state.search_results)} 条)")
         
         for idx, row in st.session_state.search_results.iterrows():
-            # 使用原始索引
-            orig_idx = row.name if hasattr(row, 'name') else idx
+            # 使用原始数据位置索引（reset_index后row.name不再是原始位置）
+            orig_idx = int(row['_orig_row_idx']) if '_orig_row_idx' in row.index else (row.name if hasattr(row, 'name') else idx)
             
             with st.expander(
                 f"**{row['招聘岗位']}** - {row['企业名称']} "

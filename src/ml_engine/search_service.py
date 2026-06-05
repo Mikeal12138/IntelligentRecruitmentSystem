@@ -235,6 +235,7 @@ class JobSearchService:
         # 创建带相似度的副本
         result_df = self.df.copy()
         result_df['similarity_score'] = similarities
+        result_df['_orig_row_idx'] = result_df.index.values  # 记录原始数据位置
         
         # 应用筛选条件
         filtered = result_df.copy()
@@ -260,8 +261,8 @@ class JobSearchService:
         # 按相似度排序
         filtered = filtered.sort_values('similarity_score', ascending=False)
         
-        # 返回前 top_n 条
-        return filtered.head(top_n), conditions
+        # 重置索引避免重复索引导致iterrows跳过行，返回前 top_n 条
+        return filtered.head(top_n).reset_index(drop=True), conditions
     
     def search_by_keywords(self, keywords, filters=None):
         """
@@ -312,12 +313,13 @@ class JobSearchService:
         
         result_df = self.df.copy()
         result_df['similarity_score'] = similarities
+        result_df['_orig_row_idx'] = result_df.index.values  # 记录原始数据位置
         
         # 排除自身，按相似度排序
-        result_df = result_df[result_df.index != job_index]
+        result_df = result_df[result_df['_orig_row_idx'] != job_index]
         result_df = result_df.sort_values('similarity_score', ascending=False)
         
-        return result_df.head(top_n)
+        return result_df.head(top_n).reset_index(drop=True)
     
     def get_unique_values(self, column):
         """获取某列的唯一值列表"""
