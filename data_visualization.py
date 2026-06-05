@@ -5,22 +5,89 @@ import seaborn as sns
 import jieba
 import re
 import os
+import sys
 from wordcloud import WordCloud
 from collections import Counter
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+# 添加项目根目录到路径
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+from src.data_pipeline.db_manager import DatabaseManager
 
 # 配置matplotlib中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
 # 设置输出目录
-OUTPUT_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\visualization'
+OUTPUT_DIR = os.path.join(ROOT_DIR, 'visualization')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# 读取清洗后的数据
-DATA_PATH = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data\cleaned_recruitment_data.csv'
-df = pd.read_csv(DATA_PATH, encoding='utf-8-sig')
+# 优先从数据库加载数据
+def load_data_from_database():
+    """从数据库加载招聘数据"""
+    try:
+        print("=" * 60)
+        print("正在连接数据库...")
+        print("=" * 60)
+        
+        db_manager = DatabaseManager()
+        db_manager.connect()
+        
+        if db_manager.connection and db_manager.connection.is_connected():
+            print("[Viz] 从数据库加载数据...")
+            query = "SELECT * FROM recruitment_data"
+            df = pd.read_sql(query, db_manager.connection)
+            db_manager.disconnect()
+            print(f"[Viz] 成功从数据库加载 {len(df)} 条数据")
+            return df
+        else:
+            print("[Viz] 数据库连接失败，尝试从CSV加载")
+            return None
+    except Exception as e:
+        print(f"[Viz] 数据库加载失败：{e}")
+        return None
 
-VIZ_BASE_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\visualization'
+def load_data_from_csv():
+    """从CSV文件加载数据"""
+    csv_paths = [
+        os.path.join(ROOT_DIR, 'data', 'processed', 'cleaned_recruitment_data(1).csv'),
+        os.path.join(ROOT_DIR, 'data', 'cleaned_recruitment_data.csv'),
+    ]
+    
+    for csv_path in csv_paths:
+        if os.path.exists(csv_path):
+            print(f"[Viz] 从CSV加载数据：{csv_path}")
+            df = pd.read_csv(csv_path, encoding='utf-8-sig')
+            print(f"[Viz] 成功从CSV加载 {len(df)} 条数据")
+            return df
+    
+    print("[Viz] 未找到CSV文件")
+    return None
+
+# 加载数据（优先数据库，备选CSV）
+print("=" * 60)
+print("数据可视化模块 - 数据加载")
+print("=" * 60)
+
+df = load_data_from_database()
+if df is None or df.empty:
+    print("\n[提示] 切换到CSV数据源...")
+    df = load_data_from_csv()
+
+if df is None or df.empty:
+    print("\n❌ 错误：无法加载任何数据源")
+    print("请确保：")
+    print("1. 数据库已启动且包含recruitment_data表")
+    print("2. 或CSV文件存在于data/processed/目录")
+    sys.exit(1)
+
+VIZ_BASE_DIR = os.path.join(ROOT_DIR, 'visualization')
 
 # 分类子目录（中文名）
 CATEGORIES = {
