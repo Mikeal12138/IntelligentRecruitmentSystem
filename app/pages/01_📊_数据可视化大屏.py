@@ -23,7 +23,7 @@ def display_category(category_name, folder_path, images):
                             with st.container(border=True):
                                 st.subheader(title)
                                 if os.path.exists(img_path):
-                                    st.image(img_path, width="stretch")
+                                    st.image(img_path, use_column_width=True)
                                 else:
                                     st.warning(f"图片未找到: {img_name}")
 
@@ -34,16 +34,15 @@ def main():
     # ========== 图表分类筛选 ==========
     st.sidebar.header("🔍 图表筛选")
     categories = {
-        "全部": ["薪资分析", "企业分析", "岗位技能", "学历经验", "行业技术", "趋势分析", "技能分析", "聚类分析", "招聘类别"],
+        "全部": ["薪资分析", "企业分析", "岗位技能", "学历经验", "行业技术", "技能分析", "聚类分析", "招聘类别"],
         "💰 薪资分析": ["薪资分析"],
         "🏢 企业分析": ["企业分析"],
-        "️🛠️岗位技能": ["岗位技能"],
+        "🛠️ 岗位技能": ["岗位技能"],
         "🎓 学历经验": ["学历经验"],
         "🔥 行业技术": ["行业技术"],
-        "📈 趋势分析": ["趋势分析"],
         "🔍 技能分析": ["技能分析"],
         "🎯 聚类分析": ["聚类分析"],
-        "📋招聘类别": ["招聘类别"]
+        "📋 招聘类别": ["招聘类别"]
     }
     
     selected_category = st.sidebar.radio(
@@ -104,14 +103,6 @@ def main():
                         [
                             ('01_各行业岗位数量分布.png', '各行业岗位数量分布'),
                             ('02_技术关键词热度.png', '技术关键词热度')
-                        ])
-    
-    # ========== 趋势分析 ==========
-    if "趋势分析" in show_categories:
-        display_category("📈 趋势分析",
-                        os.path.join(VIZ_DIR, '趋势分析'),
-                        [
-                            ('01_技术方向月度趋势.png', '技术方向月度趋势')
                         ])
     
     # ========== 技能分析 ==========

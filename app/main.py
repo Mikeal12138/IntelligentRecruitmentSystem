@@ -4,6 +4,7 @@ import plotly.express as px
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import jieba
+import os
 
 # 页面配置
 st.set_page_config(
@@ -18,10 +19,20 @@ st.set_page_config(
 def load_data():
     """加载标准化后的招聘数据"""
     try:
-        df = pd.read_csv("data/processed/jobs_standardized.csv")
-        return df
-    except FileNotFoundError:
+        # 优先尝试加载你的数据文件
+        data_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'cleaned_recruitment_data.csv'),
+            "data/cleaned_recruitment_data.csv",
+            "data/processed/jobs_standardized.csv"
+        ]
+        for path in data_paths:
+            if os.path.exists(path):
+                df = pd.read_csv(path)
+                return df
         st.warning("未找到数据文件，使用示例数据")
+        return create_sample_data()
+    except Exception as e:
+        st.warning(f"数据加载失败: {e}，使用示例数据")
         return create_sample_data()
 
 def create_sample_data():
@@ -72,6 +83,10 @@ def create_sample_data():
 # 加载数据
 df = load_data()
 
+# 检查列名以确定数据格式
+is_standardized = 'avg_salary_k' in df.columns
+is_custom = '平均月薪' in df.columns
+
 # 侧边栏导航
 st.sidebar.title("💼 智能招聘助手")
 page = st.sidebar.radio(
@@ -83,7 +98,7 @@ st.sidebar.divider()
 st.sidebar.info(f"系统已收录 {len(df)} 条招聘数据")
 
 # 页面内容
-if page == "🏠 首页":
+if page == " 首页":
     st.title("欢迎使用智能招聘助手")
     st.write("基于15000+条招聘数据的智能分析与推荐系统")
     
@@ -92,11 +107,26 @@ if page == "🏠 首页":
     with col1:
         st.metric("总岗位数", len(df))
     with col2:
-        st.metric("平均薪资", f"{df['avg_salary_k'].mean():.1f}K")
+        if is_standardized:
+            st.metric("平均薪资", f"{df['avg_salary_k'].mean():.1f}K")
+        elif is_custom:
+            st.metric("平均薪资", f"{df['平均月薪'].mean()/1000:.1f}K")
+        else:
+            st.metric("平均薪资", "N/A")
     with col3:
-        st.metric("覆盖城市数", df['location'].nunique())
+        if is_standardized:
+            st.metric("覆盖城市数", df['location'].nunique())
+        elif is_custom:
+            st.metric("覆盖城市数", df['工作城市'].nunique())
+        else:
+            st.metric("覆盖城市数", 0)
     with col4:
-        st.metric("企业数量", df['company_name'].nunique())
+        if is_standardized:
+            st.metric("企业数量", df['company_name'].nunique())
+        elif is_custom:
+            st.metric("企业数量", df['企业名称'].nunique())
+        else:
+            st.metric("企业数量", 0)
     
     st.divider()
     st.subheader("系统功能")
@@ -116,13 +146,28 @@ elif page == "🔍 岗位搜索":
     # 筛选条件
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        cities = ["全部"] + sorted(df['location'].dropna().unique().tolist())
+        if is_standardized:
+            cities = ["全部"] + sorted(df['location'].dropna().unique().tolist())
+        elif is_custom:
+            cities = ["全部"] + sorted(df['工作城市'].dropna().unique().tolist())
+        else:
+            cities = ["全部"]
         selected_city = st.selectbox("工作城市", cities)
     with col2:
-        experiences = ["全部", "应届毕业生", "1年以内", "1-3年", "3-5年", "5-10年", "10年以上"]
+        if is_standardized:
+            experiences = ["全部", "应届毕业生", "1年以内", "1-3年", "3-5年", "5-10年", "10年以上"]
+        elif is_custom:
+            experiences = ["全部"] + sorted(df['要求经验'].dropna().unique().tolist())
+        else:
+            experiences = ["全部"]
         selected_experience = st.selectbox("工作经验", experiences)
     with col3:
-        educations = ["全部"] + sorted(df['education'].dropna().unique().tolist())
+        if is_standardized:
+            educations = ["全部"] + sorted(df['education'].dropna().unique().tolist())
+        elif is_custom:
+            educations = ["全部"] + sorted(df['学历要求'].dropna().unique().tolist())
+        else:
+            educations = ["全部"]
         selected_education = st.selectbox("学历要求", educations)
     with col4:
         salary_ranges = ["全部", "5K以下", "5-10K", "10-20K", "20-30K", "30K以上"]
@@ -132,32 +177,70 @@ elif page == "🔍 岗位搜索":
     filtered_df = df.copy()
     
     if search_query:
-        filtered_df = filtered_df[
-            filtered_df['job_title'].str.contains(search_query, case=False) |
-            filtered_df['company_name'].str.contains(search_query, case=False) |
-            filtered_df['job_description'].str.contains(search_query, case=False)
-        ]
+        if is_standardized:
+            filtered_df = filtered_df[
+                filtered_df['job_title'].str.contains(search_query, case=False) |
+                filtered_df['company_name'].str.contains(search_query, case=False) |
+                filtered_df['job_description'].str.contains(search_query, case=False)
+            ]
+        elif is_custom:
+            filtered_df = filtered_df[
+                filtered_df['招聘岗位'].str.contains(search_query, case=False) |
+                filtered_df['企业名称'].str.contains(search_query, case=False) |
+                filtered_df['职位描述'].str.contains(search_query, case=False)
+            ]
     
     if selected_city != "全部":
-        filtered_df = filtered_df[filtered_df['location'] == selected_city]
+        if is_standardized:
+            filtered_df = filtered_df[filtered_df['location'] == selected_city]
+        elif is_custom:
+            filtered_df = filtered_df[filtered_df['工作城市'] == selected_city]
     
     if selected_experience != "全部":
-        filtered_df = filtered_df[filtered_df['experience_raw'] == selected_experience]
+        if is_standardized:
+            filtered_df = filtered_df[filtered_df['experience_raw'] == selected_experience]
+        elif is_custom:
+            filtered_df = filtered_df[filtered_df['要求经验'] == selected_experience]
     
     if selected_education != "全部":
-        filtered_df = filtered_df[filtered_df['education'] == selected_education]
+        if is_standardized:
+            filtered_df = filtered_df[filtered_df['education'] == selected_education]
+        elif is_custom:
+            filtered_df = filtered_df[filtered_df['学历要求'] == selected_education]
     
     if selected_salary != "全部":
-        if selected_salary == "5K以下":
-            filtered_df = filtered_df[filtered_df['avg_salary_k'] < 5]
-        elif selected_salary == "5-10K":
-            filtered_df = filtered_df[(filtered_df['avg_salary_k'] >= 5) & (filtered_df['avg_salary_k'] < 10)]
-        elif selected_salary == "10-20K":
-            filtered_df = filtered_df[(filtered_df['avg_salary_k'] >= 10) & (filtered_df['avg_salary_k'] < 20)]
-        elif selected_salary == "20-30K":
-            filtered_df = filtered_df[(filtered_df['avg_salary_k'] >= 20) & (filtered_df['avg_salary_k'] < 30)]
-        elif selected_salary == "30K以上":
-            filtered_df = filtered_df[filtered_df['avg_salary_k'] >= 30]
+        if is_standardized:
+            salary_col = 'avg_salary_k'
+        elif is_custom:
+            salary_col = '平均月薪'
+        else:
+            salary_col = None
+            
+        if salary_col:
+            if is_custom:
+                # Convert ranges to actual values (in Yuan)
+                if selected_salary == "5K以下":
+                    filtered_df = filtered_df[filtered_df[salary_col] < 5000]
+                elif selected_salary == "5-10K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 5000) & (filtered_df[salary_col] < 10000)]
+                elif selected_salary == "10-20K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 10000) & (filtered_df[salary_col] < 20000)]
+                elif selected_salary == "20-30K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 20000) & (filtered_df[salary_col] < 30000)]
+                elif selected_salary == "30K以上":
+                    filtered_df = filtered_df[filtered_df[salary_col] >= 30000]
+            else:
+                # Standardized data uses K values
+                if selected_salary == "5K以下":
+                    filtered_df = filtered_df[filtered_df[salary_col] < 5]
+                elif selected_salary == "5-10K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 5) & (filtered_df[salary_col] < 10)]
+                elif selected_salary == "10-20K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 10) & (filtered_df[salary_col] < 20)]
+                elif selected_salary == "20-30K":
+                    filtered_df = filtered_df[(filtered_df[salary_col] >= 20) & (filtered_df[salary_col] < 30)]
+                elif selected_salary == "30K以上":
+                    filtered_df = filtered_df[filtered_df[salary_col] >= 30]
     
     # 显示结果
     st.write(f"找到 {len(filtered_df)} 个匹配的岗位")
@@ -171,25 +254,62 @@ elif page == "🔍 岗位搜索":
         end_idx = min(start_idx + page_size, len(filtered_df))
         
         for i, row in filtered_df.iloc[start_idx:end_idx].iterrows():
-            with st.expander(f"**{row['job_title']}** - {row['company_name']}"):
+            if is_standardized:
+                title = row['job_title']
+                company = row['company_name']
+                salary = row['salary_raw']
+                location = row['location']
+                experience = row['experience_raw']
+                education = row['education']
+                company_type = row['company_type']
+                company_size = row['company_size']
+                financing = row['financing_stage']
+                desc = row['job_description']
+                benefits = row.get('benefits', '')
+            elif is_custom:
+                title = row['招聘岗位']
+                company = row['企业名称']
+                salary = f"{row['最低月薪']:.0f}-{row['最高月薪']:.0f}元"
+                location = row['工作城市']
+                experience = row['要求经验']
+                education = row['学历要求']
+                company_type = row.get('行业类型', 'N/A')
+                company_size = row.get('企业规模', 'N/A')
+                financing = 'N/A'
+                desc = row['职位描述']
+                benefits = ''
+            else:
+                title = row.get('job_title', 'Unknown')
+                company = row.get('company_name', 'Unknown')
+                salary = row.get('salary_raw', 'N/A')
+                location = row.get('location', 'N/A')
+                experience = row.get('experience_raw', 'N/A')
+                education = row.get('education', 'N/A')
+                company_type = row.get('company_type', 'N/A')
+                company_size = row.get('company_size', 'N/A')
+                financing = row.get('financing_stage', 'N/A')
+                desc = row.get('job_description', '')
+                benefits = row.get('benefits', '')
+
+            with st.expander(f"**{title}** - {company}"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.write(f"**薪资：** {row['salary_raw']}")
-                    st.write(f"**地点：** {row['location']}")
-                    st.write(f"**经验：** {row['experience_raw']}")
-                    st.write(f"**学历：** {row['education']}")
+                    st.write(f"**薪资：** {salary}")
+                    st.write(f"**地点：** {location}")
+                    st.write(f"**经验：** {experience}")
+                    st.write(f"**学历：** {education}")
                 with col2:
-                    st.write(f"**公司类型：** {row['company_type']}")
-                    st.write(f"**公司规模：** {row['company_size']}")
-                    st.write(f"**融资阶段：** {row['financing_stage']}")
+                    st.write(f"**行业/类型：** {company_type}")
+                    st.write(f"**规模：** {company_size}")
+                    st.write(f"**融资：** {financing}")
                 
                 st.divider()
                 st.subheader("岗位描述")
-                st.write(row['job_description'][:500] + "..." if len(row['job_description']) > 500 else row['job_description'])
+                st.write(desc[:500] + "..." if len(desc) > 500 else desc)
                 
-                if pd.notna(row['benefits']) and row['benefits'] != "":
+                if pd.notna(benefits) and benefits != "":
                     st.subheader("福利待遇")
-                    st.write(row['benefits'])
+                    st.write(benefits)
 
 elif page == "📊 数据可视化":
     st.title("招聘数据可视化")
@@ -198,100 +318,104 @@ elif page == "📊 数据可视化":
     
     with tab1:
         st.subheader("不同岗位平均薪资分布")
-        top_jobs = df.groupby('job_title')['avg_salary_k'].mean().sort_values(ascending=False).head(10)
-        fig = px.bar(
-            x=top_jobs.values,
-            y=top_jobs.index,
-            orientation='h',
-            labels={'x': '平均薪资(K)', 'y': '岗位名称'},
-            title='薪资最高的10个岗位'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        if is_standardized:
+            top_jobs = df.groupby('job_title')['avg_salary_k'].mean().sort_values(ascending=False).head(10)
+            x_vals = top_jobs.values
+            y_vals = top_jobs.index
+            x_label = '平均薪资(K)'
+        elif is_custom:
+            top_jobs = df.groupby('招聘岗位')['平均月薪'].mean().sort_values(ascending=False).head(10)
+            x_vals = top_jobs.values / 1000
+            y_vals = top_jobs.index
+            x_label = '平均薪资(K)'
+        else:
+            x_vals, y_vals, x_label = [], [], 'N/A'
+            
+        if len(x_vals) > 0:
+            fig = px.bar(
+                x=x_vals,
+                y=y_vals,
+                orientation='h',
+                labels={'x': x_label, 'y': '岗位名称'},
+                title='薪资最高的10个岗位'
+            )
+            st.plotly_chart(fig, use_container_width=True)
         
         st.subheader("薪资分布直方图")
-        fig = px.histogram(
-            df,
-            x='avg_salary_k',
-            nbins=30,
-            labels={'avg_salary_k': '平均薪资(K)'},
-            title='整体薪资分布'
-        )
+        if is_standardized:
+            fig = px.histogram(df, x='avg_salary_k', nbins=30, labels={'avg_salary_k': '平均薪资(K)'}, title='整体薪资分布')
+        elif is_custom:
+            fig = px.histogram(df, x='平均月薪', nbins=30, labels={'平均月薪': '平均薪资(元)'}, title='整体薪资分布')
         st.plotly_chart(fig, use_container_width=True)
         
         st.subheader("不同城市薪资对比")
-        city_salary = df.groupby('location')['avg_salary_k'].mean().sort_values(ascending=False)
-        fig = px.bar(
-            x=city_salary.index,
-            y=city_salary.values,
-            labels={'x': '城市', 'y': '平均薪资(K)'},
-            title='各城市平均薪资'
-        )
+        if is_standardized:
+            city_salary = df.groupby('location')['avg_salary_k'].mean().sort_values(ascending=False)
+        elif is_custom:
+            city_salary = df.groupby('工作城市')['平均月薪'].mean().sort_values(ascending=False) / 1000
+        fig = px.bar(x=city_salary.index, y=city_salary.values, labels={'x': '城市', 'y': '平均薪资(K)'}, title='各城市平均薪资')
         st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
         st.subheader("企业规模分布")
-        company_size_dist = df['company_size'].value_counts()
-        fig = px.pie(
-            values=company_size_dist.values,
-            names=company_size_dist.index,
-            title='企业规模分布'
-        )
+        if is_standardized:
+            company_size_dist = df['company_size'].value_counts()
+        elif is_custom:
+            company_size_dist = df['企业规模'].value_counts()
+        fig = px.pie(values=company_size_dist.values, names=company_size_dist.index, title='企业规模分布')
         st.plotly_chart(fig, use_container_width=True)
         
-        st.subheader("融资阶段分布")
-        financing_dist = df['financing_stage'].value_counts()
-        fig = px.pie(
-            values=financing_dist.values,
-            names=financing_dist.index,
-            title='融资阶段分布'
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        if is_standardized:
+            st.subheader("融资阶段分布")
+            financing_dist = df['financing_stage'].value_counts()
+            fig = px.pie(values=financing_dist.values, names=financing_dist.index, title='融资阶段分布')
+            st.plotly_chart(fig, use_container_width=True)
         
         st.subheader("学历要求分布")
-        education_dist = df['education'].value_counts()
-        fig = px.bar(
-            x=education_dist.index,
-            y=education_dist.values,
-            labels={'x': '学历要求', 'y': '岗位数量'},
-            title='学历要求分布'
-        )
+        if is_standardized:
+            education_dist = df['education'].value_counts()
+        elif is_custom:
+            education_dist = df['学历要求'].value_counts()
+        fig = px.bar(x=education_dist.index, y=education_dist.values, labels={'x': '学历要求', 'y': '岗位数量'}, title='学历要求分布')
         st.plotly_chart(fig, use_container_width=True)
     
     with tab3:
         st.subheader("岗位技能词云")
-        text = ' '.join(df['job_description'].dropna().tolist())
-        
-        stopwords = set(['负责', '熟悉', '经验', '工作', '开发', '能力', '要求', '良好', '团队', '沟通'])
-        wordcloud = WordCloud(
-            width=800,
-            height=400,
-            background_color='white',
-            font_path='simhei.ttf',
-            stopwords=stopwords,
-            max_words=100
-        ).generate(text)
-        
-        plt.figure(figsize=(12, 6))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        st.pyplot(plt)
+        if is_standardized:
+            text = ' '.join(df['job_description'].dropna().tolist())
+        elif is_custom:
+            text = ' '.join(df['职位描述'].dropna().tolist())
+        else:
+            text = ''
+            
+        if text:
+            stopwords = set(['负责', '熟悉', '经验', '工作', '开发', '能力', '要求', '良好', '团队', '沟通'])
+            wordcloud = WordCloud(
+                width=800, height=400, background_color='white',
+                font_path='simhei.ttf', stopwords=stopwords, max_words=100
+            ).generate(text)
+            plt.figure(figsize=(12, 6))
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis('off')
+            st.pyplot(plt)
         
         st.subheader("福利待遇词云")
-        benefits_text = ' '.join(df['benefits'].dropna().tolist())
-        benefits_wordcloud = WordCloud(
-            width=800,
-            height=400,
-            background_color='white',
-            font_path='simhei.ttf',
-            max_words=50
-        ).generate(benefits_text)
-        
-        plt.figure(figsize=(12, 6))
-        plt.imshow(benefits_wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        st.pyplot(plt)
+        if is_standardized:
+            benefits_text = ' '.join(df['benefits'].dropna().tolist())
+        else:
+            benefits_text = ''
+            
+        if benefits_text:
+            benefits_wordcloud = WordCloud(
+                width=800, height=400, background_color='white',
+                font_path='simhei.ttf', max_words=50
+            ).generate(benefits_text)
+            plt.figure(figsize=(12, 6))
+            plt.imshow(benefits_wordcloud, interpolation='bilinear')
+            plt.axis('off')
+            st.pyplot(plt)
 
-elif page == "🤖 智能分析":
+elif page == " 智能分析":
     st.title("智能分析")
     
     st.subheader("岗位聚类分析")
