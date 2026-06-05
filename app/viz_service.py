@@ -392,56 +392,6 @@ def generate_benefit_wordcloud():
     return fig
 
 
-# ==================== 行业技术图表 ====================
-
-def generate_tech_trend():
-    """生成技术方向月度趋势图"""
-    df = load_data()
-    tech_trend_keywords = ['Java', 'Python', 'C++', 'JavaScript', 'Go', '前端', '后端', '嵌入式', '算法', '测试']
-    
-    df['招聘发布日期'] = pd.to_datetime(df['招聘发布日期'], errors='coerce')
-    df['招聘年月'] = df['招聘发布日期'].dt.to_period('M')
-    month_counts = df['招聘年月'].value_counts()
-    valid_months = month_counts[month_counts >= 10].index.tolist()
-    valid_months = sorted(valid_months)
-    
-    if valid_months:
-        months = valid_months
-        df_valid = df[df['招聘年月'].isin(months)]
-        all_descriptions_trend = df_valid.groupby('招聘年月')['职位描述'].apply(lambda x: ' '.join(x.dropna().tolist()))
-        
-        trend_data = {}
-        for tech in tech_trend_keywords:
-            tech_counts = []
-            for month in months:
-                if month in all_descriptions_trend.index:
-                    text = str(all_descriptions_trend[month])
-                    count = text.count(tech)
-                    tech_counts.append(count)
-                else:
-                    tech_counts.append(0)
-            trend_data[tech] = tech_counts
-        
-        month_labels = [str(m) for m in months]
-        x_pos = range(len(months))
-        
-        fig, ax = plt.subplots(figsize=(14, 7))
-        colors = plt.cm.tab10(np.linspace(0, 1, len(tech_trend_keywords)))
-        for i, (tech, counts) in enumerate(trend_data.items()):
-            ax.plot(x_pos, counts, marker='o', linewidth=2, label=tech, color=colors[i], markersize=6)
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels(month_labels, rotation=45, ha='right', fontsize=9)
-        ax.set_xlabel('月份')
-        ax.set_ylabel('出现频次')
-        ax.set_title('各技术方向招聘市场月度趋势', fontweight='bold', fontsize=14)
-        ax.legend(fontsize=10, ncol=2)
-        ax.grid(alpha=0.3)
-        plt.tight_layout()
-        df.drop(columns=['招聘年月'], inplace=True, errors='ignore')
-        return fig
-    return None
-
-
 # ==================== 聚类分析图表 ====================
 
 def generate_cluster_chart():
@@ -559,8 +509,6 @@ CHART_FUNCTIONS = {
     # 岗位技能
     'skill_wordcloud': generate_skill_wordcloud,
     'benefit_wordcloud': generate_benefit_wordcloud,
-    # 行业技术
-    'tech_trend': generate_tech_trend,
     # 聚类分析
     'cluster': generate_cluster_chart,
     # 技能分析

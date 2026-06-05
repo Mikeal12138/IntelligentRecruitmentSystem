@@ -917,68 +917,7 @@ print("\n" + "=" * 60)
 print("【6】高级分析可视化")
 print("=" * 60)
 
-# 6.1 技术方向时间趋势图（按月统计）
-print("\n生成技术方向时间趋势图（按月）...")
-tech_trend_keywords = ['Java', 'Python', 'C++', 'JavaScript', 'Go', '前端', '后端', '嵌入式', '算法', '测试']
-
-# 按月份统计各技术关键词出现次数
-date_col = '招聘发布日期'
-if date_col in df.columns:
-    # 转换为日期格式
-    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-    # 提取年月
-    df['招聘年月'] = df[date_col].dt.to_period('M')
-    
-    # 过滤数据量过少的月份（至少10条记录）
-    month_counts = df['招聘年月'].value_counts()
-    valid_months = month_counts[month_counts >= 10].index.tolist()
-    valid_months = sorted(valid_months)
-    
-    if valid_months:
-        months = valid_months
-        df_valid = df[df['招聘年月'].isin(months)]
-        all_descriptions_trend = df_valid.groupby('招聘年月')['职位描述'].apply(lambda x: ' '.join(x.dropna().tolist()))
-        
-        trend_data = {}
-        for tech in tech_trend_keywords:
-            tech_counts = []
-            for month in months:
-                if month in all_descriptions_trend.index:
-                    text = str(all_descriptions_trend[month])
-                    count = text.count(tech)
-                    tech_counts.append(count)
-                else:
-                    tech_counts.append(0)
-            trend_data[tech] = tech_counts
-        
-        # 格式化 x 轴标签为 YYYY-MM
-        month_labels = [str(m) for m in months]
-        x_pos = range(len(months))
-        
-        fig_trend, ax_trend = plt.subplots(figsize=(14, 7))
-        colors_trend = plt.cm.tab10(np.linspace(0, 1, len(tech_trend_keywords)))
-        for i, (tech, counts) in enumerate(trend_data.items()):
-            ax_trend.plot(x_pos, counts, marker='o', linewidth=2, label=tech, color=colors_trend[i], markersize=6)
-        ax_trend.set_xticks(x_pos)
-        ax_trend.set_xticklabels(month_labels, rotation=45, ha='right', fontsize=9)
-        ax_trend.set_xlabel('月份')
-        ax_trend.set_ylabel('出现频次')
-        ax_trend.set_title('各技术方向招聘市场月度趋势', fontweight='bold', fontsize=14)
-        ax_trend.legend(fontsize=10, ncol=2)
-        ax_trend.grid(alpha=0.3)
-        plt.tight_layout()
-        save_fig(fig_trend, '趋势分析', '01_技术方向月度趋势.png')
-        
-        print(f"  (有效月份: {', '.join(month_labels)})")
-    else:
-        print("  [!] 无有效月份数据，跳过时间趋势图")
-    
-    # 清理临时列
-    df.drop(columns=['招聘年月'], inplace=True, errors='ignore')
-else:
-    print(f"  [!] 缺少{date_col}字段，跳过时间趋势图")
-
-# 6.2 岗位-技能出现频率热力图
+# 6.1 岗位-技能出现频率热力图
 print("\n生成岗位-技能热力图...")
 # 提取 Top 15 岗位和 Top 20 技能
 top_positions = df['招聘岗位'].value_counts().head(15).index.tolist()
@@ -1119,17 +1058,12 @@ for i, name in enumerate([
     '01_招聘类别分布.png',
 ], 1):
     print(f"    {i}. 招聘类别/{name}")
-print("  📈 趋势分析/ (1张)")
-for i, name in enumerate([
-    '01_技术方向月度趋势.png',
-], 1):
-    print(f"    {i}. 趋势分析/{name}")
 print("  🔍 技能分析/ (1张)")
 for i, name in enumerate([
     '02_岗位技能热力图.png',
 ], 1):
     print(f"    {i}. 技能分析/{name}")
-print("  🎯 聚类分析/ (1张)")
+print("   聚类分析/ (1张)")
 for i, name in enumerate([
     '03_岗位描述聚类降维.png',
 ], 1):
