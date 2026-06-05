@@ -32,7 +32,8 @@ st.set_page_config(
 @st.cache_resource
 def init_negotiator():
     api_key = os.getenv("LLM_API_KEY")
-    return SalaryNegotiator(api_key=api_key)
+    # 优先使用数据库
+    return SalaryNegotiator(api_key=api_key, use_database=True)
 
 # 初始化 Session State
 if 'negotiator' not in st.session_state:
@@ -48,8 +49,18 @@ if 'analysis_result' not in st.session_state:
 negotiator = st.session_state.negotiator
 
 # 侧边栏
-st.sidebar.title(" 薪资谈判助手")
+st.sidebar.title("💰 薪资谈判助手")
 st.sidebar.info("帮助您获得更好的薪资待遇")
+
+# 显示数据源状态
+if not negotiator.df.empty:
+    st.sidebar.success(f"📊 已加载 {len(negotiator.df)} 条岗位数据")
+    if negotiator.db_connection and negotiator.db_connection.is_connected():
+        st.sidebar.info("🗄️ 数据源：MySQL 数据库")
+    else:
+        st.sidebar.info("📁 数据源：CSV 文件")
+else:
+    st.sidebar.warning("⚠️ 未加载数据")
 
 if not negotiator.client:
     st.sidebar.warning("⚠️ 未配置 API Key")

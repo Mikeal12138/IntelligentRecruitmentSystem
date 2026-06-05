@@ -45,6 +45,8 @@ if 'search_results' not in st.session_state:
     st.session_state.search_results = pd.DataFrame()
 if 'search_conditions' not in st.session_state:
     st.session_state.search_conditions = {}
+if 'has_searched' not in st.session_state:
+    st.session_state.has_searched = False  # 标记是否执行过搜索
 
 search_service = st.session_state.search_service
 
@@ -99,7 +101,10 @@ with tab1:
                 results, conditions = search_service.search_by_query(query)
                 st.session_state.search_results = results
                 st.session_state.search_conditions = conditions
+                st.session_state.has_searched = True  # 标记已搜索
                 st.success(f"找到 {len(results)} 个匹配的岗位")
+            else:
+                st.warning("请输入搜索内容")
     
     # 显示搜索条件
     if st.session_state.search_conditions:
@@ -161,12 +166,13 @@ with tab1:
             }
             results = search_service.search_by_keywords([], filters)
             st.session_state.search_results = results
+            st.session_state.has_searched = True  # 标记已筛选
             st.success(f"筛选到 {len(results)} 个岗位")
     
     st.divider()
     
-    # 显示搜索结果
-    if not st.session_state.search_results.empty:
+    # 显示搜索结果（仅在用户主动搜索后显示）
+    if st.session_state.has_searched and not st.session_state.search_results.empty:
         st.subheader(f"📄 搜索结果 ({len(st.session_state.search_results)} 条)")
         
         for idx, row in st.session_state.search_results.iterrows():
@@ -223,10 +229,14 @@ with tab1:
                         similar = search_service.get_similar_jobs(orig_idx, top_n=5)
                         if not similar.empty:
                             st.session_state.search_results = similar
+                            st.session_state.has_searched = True  # 标记已搜索
                             st.success("已找到相似岗位")
     
     else:
-        st.info("请输入搜索条件开始搜索")
+        if st.session_state.has_searched:
+            st.info("未找到匹配的岗位，请尝试调整搜索条件")
+        else:
+            st.info("💡 请输入搜索条件开始搜索，例如：我想找福州的Java开发工作，月薪1万以上")
 
 with tab2:
     st.subheader("⭐ 我的收藏夹")

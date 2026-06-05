@@ -5,6 +5,7 @@
 2. 谈判策略生成
 3. 福利待遇分析
 4. 谈判准备清单
+5. 支持 MySQL 数据库数据源
 """
 import os
 import pandas as pd
@@ -17,11 +18,13 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file_
 class SalaryNegotiator:
     """薪资谈判助手"""
     
-    def __init__(self, api_key=None, model="qwen3.6-plus", base_url=None):
+    def __init__(self, api_key=None, model="qwen3.6-plus", base_url=None, use_database=True):
         self.api_key = api_key or os.getenv("LLM_API_KEY")
         self.model = model
         self.base_url = base_url or os.getenv("LLM_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1")
         self.client = None
+        self.use_database = use_database
+        self.db_connection = None
         self.df = self._load_data()
         
         if self.api_key and self.api_key != "your_api_key_here":
@@ -30,16 +33,55 @@ class SalaryNegotiator:
                 base_url=self.base_url
             )
     
+    def _get_db_connection(self):
+        """获取数据库连接"""
+        if self.db_connection is None or not self.db_connection.is_connected():
+            try:
+                import mysql.connector
+                db_config = {
+                    "host": os.getenv("DB_HOST", "localhost"),
+                    "port": int(os.getenv("DB_PORT", 3306)),
+                    "user": os.getenv("DB_USER", "root"),
+                    "password": os.getenv("DB_PASSWORD", ""),
+                    "database": os.getenv("DB_NAME", "recruitment_db"),
+                    "charset": "utf8mb4"
+                }
+                self.db_connection = mysql.connector.connect(**db_config)
+                # print("[Salary] 数据库连接成功")
+            except Exception as e:
+                # print(f"[Salary] 数据库连接失败：{e}")
+                self.db_connection = None
+        return self.db_connection
+    
     def _load_data(self):
-        """加载招聘数据"""
+        """从数据库或 CSV 加载数据"""
+        # 优先从数据库加载
+        if self.use_database:
+            conn = self._get_db_connection()
+            if conn:
+                try:
+                    query = "SELECT * FROM recruitment_data"
+                    df = pd.read_sql(query, conn)
+                    # print(f"[Salary] 从数据库加载 {len(df)} 条岗位数据")
+                    return df
+                except Exception as e:
+                    # print(f"[Salary] 数据库查询失败：{e}，尝试从 CSV 加载")
+                    pass
+        
+        # 如果数据库加载失败，从 CSV 加载
         try:
             data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                   'data', 'cleaned_recruitment_data.csv')
-            df = pd.read_csv(data_path)
-            return df
-        except Exception:
-            # 返回空DataFrame作为备用
-            return pd.DataFrame()
+                                   'data', 'processed', 'cleaned_recruitment_data(1).csv')
+            if os.path.exists(data_path):
+                df = pd.read_csv(data_path)
+                # print(f"[Salary] 从 CSV 加载 {len(df)} 条岗位数据")
+                return df
+        except Exception as e:
+            # print(f"[Salary] CSV 加载失败：{e}")
+            pass
+        
+        # 返回空DataFrame作为备用
+        return pd.DataFrame()
     
     def query_market_salary(self, position, city=None, experience=None, industry=None):
         """查询市场薪资"""
