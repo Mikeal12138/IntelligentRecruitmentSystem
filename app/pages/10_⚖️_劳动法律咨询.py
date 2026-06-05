@@ -70,30 +70,60 @@ def call_legal_agent(prompt: str) -> str:
         response = requests.post(url, headers=headers, json=data, timeout=60)
         response.raise_for_status()
         
-        # 打印原始响应以便调试（开发时可取消注释）
-        import streamlit as st
-        with st.expander("🔧 调试信息（点击查看）"):
-            st.code(response.text[:1000], language="json")
+        # 如果响应为空
+        if not response.text.strip():
+            return "⚠️ API返回空响应"
         
-        # 尝试解析JSON响应
+        # 方式1: 直接JSON解析
         try:
             result = response.json()
-        except json.JSONDecodeError:
-            # 如果不是JSON，返回原始文本
-            return response.text
+            if 'output' in result and isinstance(result['output'], dict):
+                text = result['output'].get('text', '')
+                if text:
+                    return text
+        except:
+            pass
         
-        # 提取回答内容
-        if 'output' in result:
-            output = result['output']
-            if isinstance(output, dict):
-                return output.get('text', '抱歉，未能获取回答')
-            elif isinstance(output, str):
-                return output
-        elif 'text' in result:
-            return result['text']
-        else:
-            # 返回完整的响应内容
-            return json.dumps(result, ensure_ascii=False, indent=2)
+        # 方式2: 解析SSE格式（每个data块是完整响应，只取最后一个）
+        try:
+            last_text = ""
+            lines = response.text.strip().split('\n')
+            
+            for line in lines:
+                if not line.strip():
+                    continue
+                
+                if 'data:' in line:
+                    try:
+                        json_str = line.split('data:', 1)[1].strip()
+                        if not json_str or json_str == '[DONE]':
+                            continue
+                        
+                        result = json.loads(json_str)
+                        if 'output' in result and isinstance(result['output'], dict):
+                            text = result['output'].get('text', '')
+                            if text:
+                                last_text = text.replace('\\n', '\n').replace('\\r', '')
+                    except:
+                        continue
+            
+            if last_text.strip():
+                return last_text.strip()
+        except:
+            pass
+        
+        # 方式3: 提取所有text字段
+        try:
+            import re
+            text_matches = re.findall(r'"text"\s*:\s*"([^"]*)"', response.text)
+            if text_matches:
+                full_text = ''.join(text_matches)
+                full_text = full_text.replace('\\n', '\n').replace('\\r', '')
+                return full_text
+        except:
+            pass
+        
+        return "❌ 未能解析API响应"
             
     except requests.exceptions.Timeout:
         return "⏰ 请求超时，请稍后重试"
