@@ -23,7 +23,7 @@ def display_category(category_name, folder_path, images):
                             with st.container(border=True):
                                 st.subheader(title)
                                 if os.path.exists(img_path):
-                                    st.image(img_path, width="stretch")
+                                    st.image(img_path, use_container_width=True)
                                 else:
                                     st.warning(f"图片未找到: {img_name}")
 
