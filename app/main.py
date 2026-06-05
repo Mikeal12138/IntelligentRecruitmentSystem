@@ -20,6 +20,22 @@ if not st.session_state.get('logged_in', False):
         layout="centered",
         initial_sidebar_state="collapsed"
     )
+    
+    # 完全隐藏侧边栏
+    st.markdown(
+        """
+        <style>
+            [data-testid="stSidebar"] {
+                display: none;
+            }
+            [data-testid="collapsedControl"] {
+                display: none;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
     st.title(" 智能招聘助手")
     st.markdown("### 欢迎使用智能招聘系统")
     st.caption("基于AI的智能招聘分析与推荐平台")
@@ -31,7 +47,7 @@ if not st.session_state.get('logged_in', False):
 # 页面配置（已登录状态）
 st.set_page_config(
     page_title="智能招聘助手",
-    page_icon="💼",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -104,15 +120,15 @@ st.sidebar.title(" 智能招聘助手")
 
 # 显示用户信息和登出按钮
 if st.session_state.get('user'):
-    st.sidebar.write(f"👤 当前用户：{st.session_state['user']['username']}")
-    if st.sidebar.button("🔓 退出登录"):
+    st.sidebar.write(f" 当前用户：{st.session_state['user']['username']}")
+    if st.sidebar.button(" 退出登录"):
         logout()
 
 st.sidebar.divider()
 st.sidebar.info(f"系统已收录 {len(df)} 条招聘数据")
 
 # 页面内容 - 直接显示首页内容
-st.title("🏠 欢迎使用智能招聘助手")
+st.title(" 欢迎使用智能招聘助手")
 st.markdown("### 📊 基于15000+条招聘数据的智能分析与推荐系统")
 
 st.divider()
@@ -133,18 +149,18 @@ with col4:
 st.divider()
 
 # 数据集详细统计
-st.subheader("📊 数据统计详情")
+st.subheader(" 数据统计详情")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("**🏢 企业规模分布**")
+    st.markdown("** 企业规模分布**")
     company_size_dist = df['company_size'].value_counts().head(5)
     for size, count in company_size_dist.items():
         st.write(f"• {size}: {count} 个岗位")
 
 with col2:
-    st.markdown("**🎓 学历要求分布**")
+    st.markdown("** 学历要求分布**")
     education_dist = df['education'].value_counts()
     for edu, count in education_dist.items():
         st.write(f"• {edu}: {count} 个岗位")
@@ -155,14 +171,14 @@ st.divider()
 st.subheader("🚀 系统功能模块")
 
 features = [
-    ("📊 数据可视化大屏", "多维度数据可视化，包括薪资分析、企业分析、技能词云等"),
+    (" 数据可视化大屏", "多维度数据可视化，包括薪资分析、企业分析、技能词云等"),
     ("☁️ 岗位词云与需求", "展示岗位描述与招聘职位中的核心关键词"),
     (" 智能求职助手", "基于AI的求职建议与岗位推荐"),
     ("🔍 智能岗位搜索与筛选", "多维度搜索筛选，快速找到匹配岗位"),
-    ("📂 简历智能解析与评估", "AI解析简历内容，评估匹配度"),
-    ("💰 薪资谈判助手", "智能薪资分析与谈判策略建议"),
-    ("🤝 面试辅助与评估", "面试问题预测与模拟面试评估"),
-    ("📊 招聘数据导入数据库", "支持CSV数据批量导入MySQL数据库")
+    (" 简历智能解析与评估", "AI解析简历内容，评估匹配度"),
+    (" 薪资谈判助手", "智能薪资分析与谈判策略建议"),
+    (" 面试辅助与评估", "面试问题预测与模拟面试评估"),
+    (" 招聘数据导入数据库", "支持CSV数据批量导入MySQL数据库")
 ]
 
 for icon_name, description in features:
@@ -171,7 +187,7 @@ for icon_name, description in features:
 st.divider()
 
 # 热门岗位TOP10
-st.subheader(" 热门岗位 TOP 10")
+st.subheader("🏆 热门岗位 TOP 10")
 
 top_jobs = df.groupby('job_title').size().sort_values(ascending=False).head(10)
 fig = px.bar(
