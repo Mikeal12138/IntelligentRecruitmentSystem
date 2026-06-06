@@ -1,7 +1,11 @@
 import pandas as pd
 import numpy as np
+import os
 
-df = pd.read_csv(r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data\cleaned_recruitment_data.csv', encoding='utf-8-sig')
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(ROOT_DIR, 'data', 'cleaned_recruitment_data.csv')
+
+df = pd.read_csv(DATA_PATH, encoding='utf-8-sig')
 
 print('=' * 60)
 print('数据质量全面审查')

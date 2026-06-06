@@ -1,8 +1,10 @@
 import pandas as pd
 import os
 
+# 项目根目录
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 数据文件路径
-DATA_PATH = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data\cleaned_recruitment_data.csv'
+DATA_PATH = os.path.join(ROOT_DIR, 'data', 'cleaned_recruitment_data.csv')
 
 print("=" * 60)
 print("删除指定列脚本")

@@ -3,8 +3,9 @@ import numpy as np
 import re
 import os
 
-RAW_DATA_PATH = r'c:\Users\13309\Desktop\大实验\test1.csv'
-PROCESSED_DIR = r'c:\Users\13309\Desktop\大实验\IntelligentRecruitmentSystem\data'
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_DATA_PATH = os.path.join(ROOT_DIR, 'data', 'raw', 'test1.csv')
+PROCESSED_DIR = os.path.join(ROOT_DIR, 'data')
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 CLEANED_DATA_PATH = os.path.join(PROCESSED_DIR, 'cleaned_recruitment_data.csv')

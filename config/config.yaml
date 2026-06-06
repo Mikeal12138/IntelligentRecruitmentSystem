@@ -2,14 +2,17 @@
 
 # 数据路径
 data:
-  raw_path: "data/raw/"
   processed_path: "data/processed/"
-  text_features_path: "data/text_features/"
 
 # 模型路径
 models:
   model_path: "models/"
-  nn_model: "models/nn_classifier.pt"
+
+# NLP 配置
+nlp:
+  max_features: 5000
+  ngram_range: [1, 2]
+  stopwords_path: "data/text_features/stopwords.txt"
 
 # 模型超参数
 hyperparameters:
@@ -19,19 +22,7 @@ hyperparameters:
     max_iter: 300
   
   neural_network:
-    input_size: 128
     hidden_size: 64
-    num_classes: 10
     learning_rate: 0.001
     epochs: 100
 
-# NLP 配置
-nlp:
-  stopwords_path: "data/text_features/stopwords.txt"
-  max_features: 5000
-
-# LLM 配置
-llm:
-  model: "gpt-3.5-turbo"
-  temperature: 0.7
-  max_tokens: 1000
