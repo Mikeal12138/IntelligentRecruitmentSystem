@@ -307,9 +307,13 @@ def generate_exp_salary_boxplot():
 # ==================== 岗位技能词云 ====================
 
 def generate_skill_wordcloud():
-    """生成岗位技能需求词云"""
+    """生成岗位技能需求词云（仅IT相关行业）"""
     df = load_data()
-    text = ' '.join(df['职位描述'].dropna().tolist())
+    # 过滤IT相关行业
+    it_industries = ['IT互联网', '电子硬件', '云计算/大数据', '人工智能', '物联网', '通信/网络设备']
+    df_it = df[df['行业类型'].isin(it_industries)]
+    
+    text = ' '.join(df_it['职位描述'].dropna().tolist())
     words = jieba.lcut(text)
     
     stop_words = {
@@ -358,8 +362,12 @@ def generate_skill_wordcloud():
 
 
 def generate_benefit_wordcloud():
-    """生成福利待遇词云"""
+    """生成福利待遇词云（仅IT相关行业）"""
     df = load_data()
+    # 过滤IT相关行业
+    it_industries = ['IT互联网', '电子硬件', '云计算/大数据', '人工智能', '物联网', '通信/网络设备']
+    df_it = df[df['行业类型'].isin(it_industries)]
+    
     benefit_keywords = [
         '五险一金', '年终奖', '带薪年假', '绩效奖金', '全勤奖', '交通补助', '餐补', '房补',
         '通讯补贴', '加班补助', '高温补贴', '节日福利', '生日福利', '定期体检', '员工旅游',
@@ -373,7 +381,7 @@ def generate_benefit_wordcloud():
         '带薪休假', '年假', '调休', '弹性工作制', '远程办公', '居家办公',
     ]
     
-    all_descriptions = ' '.join(df['职位描述'].dropna().tolist())
+    all_descriptions = ' '.join(df_it['职位描述'].dropna().tolist())
     benefit_freq = {}
     for kw in benefit_keywords:
         count = all_descriptions.count(kw)
@@ -390,6 +398,56 @@ def generate_benefit_wordcloud():
     ax.set_title('福利待遇关键词词云', fontsize=18, fontweight='bold', pad=20)
     plt.tight_layout()
     return fig
+
+
+# ==================== 行业技术图表 ====================
+
+def generate_tech_trend():
+    """生成技术方向月度趋势图"""
+    df = load_data()
+    tech_trend_keywords = ['Java', 'Python', 'C++', 'JavaScript', 'Go', '前端', '后端', '嵌入式', '算法', '测试']
+    
+    df['招聘发布日期'] = pd.to_datetime(df['招聘发布日期'], errors='coerce')
+    df['招聘年月'] = df['招聘发布日期'].dt.to_period('M')
+    month_counts = df['招聘年月'].value_counts()
+    valid_months = month_counts[month_counts >= 10].index.tolist()
+    valid_months = sorted(valid_months)
+    
+    if valid_months:
+        months = valid_months
+        df_valid = df[df['招聘年月'].isin(months)]
+        all_descriptions_trend = df_valid.groupby('招聘年月')['职位描述'].apply(lambda x: ' '.join(x.dropna().tolist()))
+        
+        trend_data = {}
+        for tech in tech_trend_keywords:
+            tech_counts = []
+            for month in months:
+                if month in all_descriptions_trend.index:
+                    text = str(all_descriptions_trend[month])
+                    count = text.count(tech)
+                    tech_counts.append(count)
+                else:
+                    tech_counts.append(0)
+            trend_data[tech] = tech_counts
+        
+        month_labels = [str(m) for m in months]
+        x_pos = range(len(months))
+        
+        fig, ax = plt.subplots(figsize=(14, 7))
+        colors = plt.cm.tab10(np.linspace(0, 1, len(tech_trend_keywords)))
+        for i, (tech, counts) in enumerate(trend_data.items()):
+            ax.plot(x_pos, counts, marker='o', linewidth=2, label=tech, color=colors[i], markersize=6)
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(month_labels, rotation=45, ha='right', fontsize=9)
+        ax.set_xlabel('月份')
+        ax.set_ylabel('出现频次')
+        ax.set_title('各技术方向招聘市场月度趋势', fontweight='bold', fontsize=14)
+        ax.legend(fontsize=10, ncol=2)
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        df.drop(columns=['招聘年月'], inplace=True, errors='ignore')
+        return fig
+    return None
 
 
 # ==================== 聚类分析图表 ====================
@@ -509,6 +567,8 @@ CHART_FUNCTIONS = {
     # 岗位技能
     'skill_wordcloud': generate_skill_wordcloud,
     'benefit_wordcloud': generate_benefit_wordcloud,
+    # 行业技术
+    'tech_trend': generate_tech_trend,
     # 聚类分析
     'cluster': generate_cluster_chart,
     # 技能分析

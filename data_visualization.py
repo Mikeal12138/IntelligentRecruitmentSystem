@@ -318,8 +318,13 @@ print("\n" + "=" * 60)
 print("【3】岗位需求词云")
 print("=" * 60)
 
+# 过滤IT相关行业，排除机械、工业等非计算机领域
+it_industries = ['IT互联网', '电子硬件', '云计算/大数据', '人工智能', '物联网', '通信/网络设备']
+df_it = df[df['行业类型'].isin(it_industries)].copy()
+print(f"IT相关行业数据量: {len(df_it)} 条 (原始数据量: {len(df)} 条)")
+
 # 3.1 职位描述词云
-job_descriptions = df['职位描述'].dropna().tolist()
+job_descriptions = df_it['职位描述'].dropna().tolist()
 all_text = ' '.join(job_descriptions)
 
 # 使用jieba分词
@@ -805,9 +810,9 @@ tech_keywords = [
     'TensorFlow', 'PyTorch', 'OpenCV',
 ]
 
-# 统计技术关键词出现频次
+# 统计技术关键词出现频次（使用IT行业过滤后的数据）
 tech_freq = {}
-all_descriptions = ' '.join(df['职位描述'].dropna().tolist())
+all_descriptions = ' '.join(df_it['职位描述'].dropna().tolist())
 desc_words = jieba.lcut(all_descriptions)
 for tech in tech_keywords:
     count = desc_words.count(tech) + all_descriptions.count(tech)
@@ -856,8 +861,8 @@ ax_wc_tech.axis('off')
 ax_wc_tech.set_title('行业技术热点词云', fontsize=18, fontweight='bold', pad=20)
 save_wc(fig_wc_tech, '行业技术', '03_技术热点词云.png')
 
-# 5.3b 招聘职位关键词词云
-job_titles = df['招聘岗位'].dropna().tolist()
+# 5.3b 招聘职位关键词词云（使用IT行业过滤后的数据）
+job_titles = df_it['招聘岗位'].dropna().tolist()
 all_job_text = ' '.join(job_titles)
 job_words = jieba.lcut(all_job_text)
 
@@ -937,7 +942,7 @@ benefit_keywords = [
     '弹性工作制', '远程办公', '居家办公',
 ]
 
-all_descriptions2 = ' '.join(df['职位描述'].dropna().tolist())
+all_descriptions2 = ' '.join(df_it['职位描述'].dropna().tolist())
 benefit_freq = {}
 for kw in benefit_keywords:
     count = all_descriptions2.count(kw)
